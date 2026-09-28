@@ -68,7 +68,7 @@ wclean
 wbuild
 ```
 
-Once the building process is therminanted, the executable can be invoked as a native OpenFoam terminal utility.
+Once the building process is terminanted, the executable can be invoked as a native OpenFoam terminal utility.
 
 ### Utilities created so far
 
