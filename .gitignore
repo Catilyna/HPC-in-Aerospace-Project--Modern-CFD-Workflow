@@ -43,6 +43,7 @@
 build/
 Build/
 build-*/
+/utilities/STL_dim_extractor/Make/*/
 
 # CMake generated files
 CMakeFiles/
