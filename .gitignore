@@ -68,3 +68,10 @@ vcpkg_installed/
 # test output & cache
 Testing/
 .cache/
+
+# OpenFOAM: case generated files
+assets/ahmedBody/system/domainParams
+assets/ahmedBody/constant/polyMesh/
+assets/ahmedBody/processor*/
+assets/ahmedBody/[1-9]*/
+assets/ahmedBody/postProcessing/
