@@ -15,7 +15,7 @@ FoamFile
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 #includeEtc "caseDicts/mesh/generation/snappyHexMeshDict.cfg"
-
+#include "domainParams"
 castellatedMesh on;
 snap            on;
 addLayers       on;
@@ -81,14 +81,14 @@ castellatedMeshControls
     {
         ahmedBody
         {
-            level (0 0);
+            level ($levels $levels);
 
             regions
             {
 
                 body
                 {
-                    level (3 4);
+                    level ($levels $levels);
                     patchInfo
                     {
                         type wall;
@@ -98,7 +98,7 @@ castellatedMeshControls
 
                 legs
                 {
-                    level (4 5);
+                    level ($levels $levels);
                     patchInfo
                     {
                         type wall;
@@ -112,7 +112,7 @@ castellatedMeshControls
     // Resolve sharp angles
     //resolveFeatureAngle 10;
 
-    refinementRegions
+    refinementRegionsi
     {
         refinementBox
         {

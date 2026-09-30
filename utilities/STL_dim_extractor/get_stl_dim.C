@@ -2,8 +2,11 @@
 #include "triSurface.H"
 #include "boundBox.H"
 #include "OFstream.H"
+#include <cmath>
+#include <string>
 
 using namespace Foam;
+
 
 struct Domain 
 {
@@ -11,6 +14,7 @@ struct Domain
     double yMin, yMax;
     double zMin, zMax;
 };
+
 
 Domain computeDomain(    
     
@@ -38,17 +42,23 @@ Domain computeDomain(
 }
 
 
+
 int main(int argc, char *argv[])
 {
     argList::noParallel(); // Avoid parallelisation 
     argList::validArgs.append("stlFile"); // Add the expected argument for the STL file
+    argList::validArgs.append("targetSize");
     argList args(argc, argv); // Create an argument list from the command line arguments
+
 
     // Correct class for loading STL files natively
     triSurface surface(args[1]);
 
+    const scalar targetSize = std::stod(args[2]);
     // Calculate bounding box natively in memory
     boundBox bb(surface.points(), true);
+
+
 
     Domain d = computeDomain
     (
@@ -56,12 +66,25 @@ int main(int argc, char *argv[])
         bb.min().x(),  bb.min().y(),  bb.min().z()
     );
 
+
+    // compute initial cell number
+
+    double xLength = d.xMax - d.xMin; 
+
+    int xNumCell = std::ceil(xLength / targetSize) ;
+
+
     Info<< "X_size: " << bb.span().x() << nl
         << "Y_size: " << bb.span().y() << nl
         << "Z_size: " << bb.span().z() << nl
         << "Min_x: " << bb.min().x() << nl 
         << "Min_y: " << bb.min().y() << nl 
-        << "Min_z: " << bb.min().z() << endl; 
+        << "Min_z: " << bb.min().z() << endl;
+
+
+
+
+    
     
     OFstream os("system/domainParams");
     os  << "xMin " << d.xMin << ";" << nl
@@ -69,7 +92,13 @@ int main(int argc, char *argv[])
         << "yMin " << d.yMin << ";" << nl   
         << "yMax " << d.yMax << ";" << nl
         << "zMin " << d.zMin << ";" << nl
-        << "zMax " << d.zMax << ";" << endl;
+        << "zMax " << d.zMax << ";" << nl
+        << "xNumCell " << xNumCell << ";" << endl;
+
+
+
+
+        
 
     Info<< "mesh_x_Min " << d.xMin << nl << "mesh_x_Max " << d.xMax << nl
         << "mesh_y_Min " << d.yMin << nl << "mesh_y_Max " << d.yMax << nl
