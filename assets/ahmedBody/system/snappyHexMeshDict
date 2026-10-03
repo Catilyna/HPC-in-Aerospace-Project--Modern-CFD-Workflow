@@ -112,7 +112,7 @@ castellatedMeshControls
     // Resolve sharp angles
     //resolveFeatureAngle 10;
 
-    refinementRegionsi
+    refinementRegions
     {
         refinementBox
         {

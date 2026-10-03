@@ -15,4 +15,8 @@ cleanCase
 rm -rf validation/segregated \
     validation/*.png validation/*.eps \
     0
+
+
+# Delete the system/domainParams file created by the getStlDim utility (if it exists)
+rm -f system/domainParams
 #------------------------------------------------------------------------------
