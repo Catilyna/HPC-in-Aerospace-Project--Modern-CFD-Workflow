@@ -72,4 +72,4 @@ Once the building process is terminanted, the executable can be invoked as a nat
 
 ### Utilities created so far
 
--  `get_stl_dim`: returns SLT dimentions along $x$, $y$, $z$ axis. Requires an STL file to process.
+-  `getStlDim`: returns SLT dimentions along $x$, $y$, $z$ axis. Requires an STL file to process.

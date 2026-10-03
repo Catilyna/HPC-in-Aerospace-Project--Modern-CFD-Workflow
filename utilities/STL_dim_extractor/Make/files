@@ -1,3 +1,0 @@
-get_stl_dim.C
-
-EXE = $(FOAM_USER_APPBIN)/get_stl_dim
