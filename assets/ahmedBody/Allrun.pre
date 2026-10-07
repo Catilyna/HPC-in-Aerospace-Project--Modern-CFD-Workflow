@@ -17,6 +17,7 @@ options:
                          - S: small, 100k cells
                          - M: medium, 1 M cells (default)
                          - L: large, 4.5M cells
+  -display               reconstruct and display the final mesh in ParaView
 
 Runs the ${PWD##*/} simulation
 
@@ -48,7 +49,8 @@ setKeyword () {
 
 #- you need to use nCores <= the available physical ones
 nRefine=0;
-nCores=8;
+nCores=4;
+display=false;
 
 while [ "$#" -gt 0 ]
 do
@@ -76,6 +78,10 @@ do
           *)  usage "Invalid argument '$mesh' to -m|-mesh <S|M|L>." ;;
       esac
       ;;
+   -display)
+      display=true
+      shift
+      ;;
    -test)
       shift
       ;;
@@ -91,15 +97,17 @@ done
 
 [ ! -d 0 ] && cp -r 0.orig 0
 
+#- extract STL dimension
+runApplication getStlDim constant/geometry/ahmedBody.stl 1
 
 #- create the background mesh
 runApplication blockMesh
 
 #- generate the .eMesh file
-runApplication surfaceFeatures
+# runApplication surfaceFeatures
 
-# refine nesh
-refineBackgroundMesh $nRefine;
+#- refine mesh
+# refineBackgroundMesh $nRefine;
 
 #- set number of subdomains
 setKeyword numberOfSubdomains "$nCores" system/decomposeParDict;
@@ -116,3 +124,8 @@ rm -rf cellLevel level0Edge pointLevel surfaceIndex \
     
 runParallel checkMesh
 
+if $display
+then
+    runApplication reconstructParMesh -constant
+    paraFoam -builtin
+fi

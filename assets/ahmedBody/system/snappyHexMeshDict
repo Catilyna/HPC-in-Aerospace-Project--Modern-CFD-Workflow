@@ -15,7 +15,7 @@ FoamFile
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 #includeEtc "caseDicts/mesh/generation/snappyHexMeshDict.cfg"
-#include "domainParams"
+
 castellatedMesh on;
 snap            on;
 addLayers       on;
@@ -63,32 +63,32 @@ castellatedMeshControls
 
     minRefinementCells 10;
 
-    maxLoadUnbalance 0.10;
+    maxLoadUnbalance 0.10; // useful when dealing with pararelisation
 
-    nCellsBetweenLevels 3;
+    nCellsBetweenLevels 3; // Transition layers between two different refinements, to allow for smoother transition
 
 
     features
     (
         {
-            file "ahmedBody.eMesh";
-            level 4;
+            file "ahmedBody.eMesh"; // Featured mesh to be used
+            level 4; // refinement level of 4 along the features of the stl
         }
 
     );
 
-    refinementSurfaces
+    refinementSurfaces 
     {
         ahmedBody
         {
-            level ($levels $levels);
+            level (0 0);
 
             regions
             {
 
-                body
+                body // for each set of geometris in the stl, define a refinement level and a type of boundary (e.g: walls)
                 {
-                    level ($levels $levels);
+                    level (3 4);
                     patchInfo
                     {
                         type wall;
@@ -96,9 +96,9 @@ castellatedMeshControls
                     }
                 }
 
-                legs
+                legs 
                 {
-                    level ($levels $levels);
+                    level (4 5);
                     patchInfo
                     {
                         type wall;
@@ -121,7 +121,7 @@ castellatedMeshControls
         }
     }
 
-    insidePoint (-0.4 0.1 0.0);
+    insidePoint (-0.4 0.1 0.0); // a point inside the fluid region
     nCellsBetweenLevels 5;
 }
 
