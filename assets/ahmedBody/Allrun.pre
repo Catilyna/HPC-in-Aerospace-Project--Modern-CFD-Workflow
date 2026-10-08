@@ -46,6 +46,22 @@ setKeyword () {
     foamDictionary -entry "$_entry" -set "$_value" "$_file" > /dev/null
 }
 
+checkCores () {
+    case "$1" in
+        ''|*[!0-9]*|0)
+            echo "Number of cores must be a positive integer: '$1'" >&2
+            return 1
+            ;;
+    esac
+
+    _availableCores=$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 1)
+    if [ "$1" -gt "$_availableCores" ]
+    then
+        echo "Number of cores ($1) exceeds the available processors ($_availableCores)" >&2
+        return 1
+    fi
+}
+
 
 #- you need to use nCores <= the available physical ones
 nRefine=0;
@@ -126,6 +142,6 @@ runParallel checkMesh
 
 if $display
 then
-    runApplication reconstructParMesh -constant
+    runApplication reconstructPar -constant
     paraFoam -builtin
 fi
