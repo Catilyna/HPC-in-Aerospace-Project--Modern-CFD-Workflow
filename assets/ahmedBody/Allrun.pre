@@ -17,7 +17,7 @@ options:
                          - S: small, 100k cells
                          - M: medium, 1 M cells (default)
                          - L: large, 4.5M cells
-  -display               reconstruct and display the final mesh in ParaView
+  -d | -display               reconstruct and display the final mesh in ParaView
 
 Runs the ${PWD##*/} simulation
 
@@ -33,7 +33,7 @@ refineBackgroundMesh () {
     while [ $_r -lt "$_nRefine" ]
     do
         echo "Refining the background mesh"
-        runApplication -a refineMesh -overwrite
+        runParallel refineMesh -overwrite
         _r=$(( _r + 1 ))
     done
 }
@@ -94,7 +94,7 @@ do
           *)  usage "Invalid argument '$mesh' to -m|-mesh <S|M|L>." ;;
       esac
       ;;
-   -display)
+   -d | -display)
       display=true
       shift
       ;;
@@ -114,22 +114,22 @@ done
 [ ! -d 0 ] && cp -r 0.orig 0
 
 #- extract STL dimension
-runApplication getStlDim constant/geometry/ahmedBody.stl 1
+runApplication getStlDim constant/geometry/ahmedBody.stl 0.5
 
 #- create the background mesh
 runApplication blockMesh
 
 #- generate the .eMesh file
-# runApplication surfaceFeatures
-
-#- refine mesh
-# refineBackgroundMesh $nRefine;
+runApplication surfaceFeatures
 
 #- set number of subdomains
 setKeyword numberOfSubdomains "$nCores" system/decomposeParDict;
 
 #- decompose the background domain for parallel calculation
 runApplication decomposePar -copyZero
+
+#- refine the decomposed background mesh in parallel
+refineBackgroundMesh "$nRefine"
     
 #- mesh in parallel (overwrites by default)
 runParallel snappyHexMesh
