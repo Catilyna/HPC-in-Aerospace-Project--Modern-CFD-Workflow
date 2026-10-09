@@ -33,7 +33,7 @@ refineBackgroundMesh () {
     while [ $_r -lt "$_nRefine" ]
     do
         echo "Refining the background mesh"
-        runParallel refineMesh -overwrite
+        runParallel -a refineMesh -overwrite
         _r=$(( _r + 1 ))
     done
 }
@@ -66,7 +66,7 @@ checkCores () {
 #- you need to use nCores <= the available physical ones
 nRefine=0;
 nCores=4;
-display=false;
+display=true;
 
 while [ "$#" -gt 0 ]
 do
@@ -130,7 +130,7 @@ runApplication decomposePar -copyZero
 
 #- refine the decomposed background mesh in parallel
 refineBackgroundMesh "$nRefine"
-    
+
 #- mesh in parallel (overwrites by default)
 runParallel snappyHexMesh
     
