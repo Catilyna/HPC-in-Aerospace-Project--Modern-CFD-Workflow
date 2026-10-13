@@ -48,6 +48,10 @@ int main(int argc, char *argv[]) {
   Domain d = computeDomain(bb.span().x(), bb.span().y(), bb.span().z(),
                            bb.min().x(), bb.min().y(), bb.min().z());
 
+  double Lx = bb.span().x();
+  double Ly = bb.span().y();
+  double Lz = bb.span().z();
+
   // compute cell number in each direction based on the target size
   double xLength = d.xMax - d.xMin;
   double yLength = d.yMax - d.yMin;
@@ -57,13 +61,30 @@ int main(int argc, char *argv[]) {
   int zNumCell = std::ceil(zLength / targetSize);
 
   // compute offsets to exit from the body but still be inside the domain
-  const double xOffset = std::max(2.5 * targetSize, 0.40 * bb.span().x());
-  const double yOffset = std::max(1.5 * targetSize, 0.25 * bb.span().y());
-  const double zOffset = std::max(2.0 * targetSize, 0.35 * bb.span().z());
+  const double xOffset = std::max(2.5 * targetSize, 0.40 * Lx);
+  const double yOffset = std::max(1.5 * targetSize, 0.25 * Ly);
+  const double zOffset = std::max(2.0 * targetSize, 0.35 * Lz);
 
   const double locX = bb.min().x() - xOffset;
   const double locY = bb.max().y() + yOffset;
   const double locZ = bb.max().z() + zOffset;
+
+  // =========================================================================
+  // REFINEMENT BOX CALCULATION
+  // =========================================================================
+
+  // X: upstream margin (20% Lx) and extended downstream wake region (1.80 Lx)
+  const double refBoxXMin = std::max(d.xMin, bb.min().x() - 0.20 * Lx);
+  const double refBoxXMax = std::min(d.xMax, bb.max().x() + 1.80 * Lx);
+
+  // Y: symmetric lateral expansion clamped to the computational domain
+  // boundaries (natively respects symmetry planes)
+  const double refBoxYMin = std::max(d.yMin, bb.min().y() - 0.30 * Ly);
+  const double refBoxYMax = std::min(d.yMax, bb.max().y() + 0.30 * Ly);
+
+  // Z: bounded from ground/road level up to 35% vehicle height above the roof
+  const double refBoxZMin = std::max(d.zMin, bb.min().z());
+  const double refBoxZMax = std::min(d.zMax, bb.max().z() + 0.35 * Lz);
 
   OFstream os("system/domainParams");
   os << "xMin " << d.xMin << ";" << nl << "xMax " << d.xMax << ";" << nl
@@ -75,6 +96,15 @@ int main(int argc, char *argv[]) {
   os << "// --- snappyHexMesh seed point ---" << nl << "locInMeshX " << locX
      << ";" << nl << "locInMeshY " << locY << ";" << nl << "locInMeshZ " << locZ
      << ";" << endl;
+
+  // Export refinementBox vector and scalar definitions for snappyHexMeshDict
+  os << "// --- snappyHexMesh refinementBox ---" << nl << "refBoxMin ("
+     << refBoxXMin << " " << refBoxYMin << " " << refBoxZMin << ");" << nl
+     << "refBoxMax (" << refBoxXMax << " " << refBoxYMax << " " << refBoxZMax
+     << ");" << nl << "refBoxXMin " << refBoxXMin << ";" << nl << "refBoxXMax "
+     << refBoxXMax << ";" << nl << "refBoxYMin " << refBoxYMin << ";" << nl
+     << "refBoxYMax " << refBoxYMax << ";" << nl << "refBoxZMin " << refBoxZMin
+     << ";" << nl << "refBoxZMax " << refBoxZMax << ";" << endl;
 
   return 0;
 }
