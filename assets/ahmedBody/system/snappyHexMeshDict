@@ -42,7 +42,7 @@ geometry
     }
 
     // Analytical shape; cylinder, sphere
-    refinementBox
+    refinementBox // TODO: Parametrise and/or parse in config file? 
     {
         type box;
         min (-0.2 0.0 -0.195);
@@ -57,9 +57,9 @@ castellatedMeshControls
     // Refinement parameters
     // ~~~~~~~~~~~~~~~~~~~~~
 
-    maxLocalCells 100000;
+    maxLocalCells 100000; // TODO: Scaled according to mesh configuration (S, M, L)?
 
-    maxGlobalCells 2000000;
+    maxGlobalCells 2000000; // TODO: Scaled according to mesh configuration (S, M, L)?
 
     minRefinementCells 10;
 
@@ -88,7 +88,7 @@ castellatedMeshControls
 
                 body // for each set of geometris in the stl, define a refinement level and a type of boundary (e.g: walls)
                 {
-                    level (3 4);
+                    level (3 4); // TODO: Scaled according to mesh configuration (S, M, L)?
                     patchInfo
                     {
                         type wall;
@@ -98,7 +98,7 @@ castellatedMeshControls
 
                 legs 
                 {
-                    level (4 5);
+                    level (4 5); // TODO: Scaled according to mesh configuration (S, M, L)?
                     patchInfo
                     {
                         type wall;
@@ -117,11 +117,11 @@ castellatedMeshControls
         refinementBox
         {
             mode inside;
-            level     3;
+            level     3; // TODO: Scaled according to mesh configuration (S, M, L)?
         }
     }
 
-    insidePoint (-0.4 0.1 0.0); // a point inside the fluid region
+    insidePoint (-0.4 0.1 0.0); // a point inside the fluid region // TODO: Add automatic detection based on STL geometry!
     nCellsBetweenLevels 5;
 }
 
@@ -165,16 +165,16 @@ addLayersControls
     {
         body
         {
-            nSurfaceLayers 3;
+            nSurfaceLayers 3; // TODO: Scaled according to mesh configuration (S, M, L)?
         }
         legs
         {
-            nSurfaceLayers 3;
+            nSurfaceLayers 3; // TODO: Scaled according to mesh configuration (S, M, L)?
         }
     }
 
     relativeSizes       on;
-    expansionRatio      1.2;
+    expansionRatio      1.2; // TODO: Understand how to compute these values!
     finalLayerThickness 0.5;
     minThickness        1e-3;
     maxThicknessToMedialRatio 0.6;
