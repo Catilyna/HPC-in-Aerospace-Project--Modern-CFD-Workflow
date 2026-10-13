@@ -48,19 +48,22 @@ int main(int argc, char *argv[]) {
   Domain d = computeDomain(bb.span().x(), bb.span().y(), bb.span().z(),
                            bb.min().x(), bb.min().y(), bb.min().z());
 
-  // compute initial cell number
-
+  // compute cell number in each direction based on the target size
   double xLength = d.xMax - d.xMin;
   double yLength = d.yMax - d.yMin;
   double zLength = d.zMax - d.zMin;
-
   int xNumCell = std::ceil(xLength / targetSize);
   int yNumCell = std::ceil(yLength / targetSize);
   int zNumCell = std::ceil(zLength / targetSize);
 
-  Info << "X_size: " << bb.span().x() << nl << "Y_size: " << bb.span().y() << nl
-       << "Z_size: " << bb.span().z() << nl << "Min_x: " << bb.min().x() << nl
-       << "Min_y: " << bb.min().y() << nl << "Min_z: " << bb.min().z() << endl;
+  // compute offsets to exit from the body but still be inside the domain
+  const double xOffset = std::max(2.5 * targetSize, 0.40 * bb.span().x());
+  const double yOffset = std::max(1.5 * targetSize, 0.25 * bb.span().y());
+  const double zOffset = std::max(2.0 * targetSize, 0.35 * bb.span().z());
+
+  const double locX = bb.min().x() - xOffset;
+  const double locY = bb.max().y() + yOffset;
+  const double locZ = bb.max().z() + zOffset;
 
   OFstream os("system/domainParams");
   os << "xMin " << d.xMin << ";" << nl << "xMax " << d.xMax << ";" << nl
@@ -69,9 +72,9 @@ int main(int argc, char *argv[]) {
      << "nCells (" << xNumCell << " " << yNumCell << " " << zNumCell << ");"
      << endl;
 
-  Info << "mesh_x_Min " << d.xMin << nl << "mesh_x_Max " << d.xMax << nl
-       << "mesh_y_Min " << d.yMin << nl << "mesh_y_Max " << d.yMax << nl
-       << "mesh_z_Min " << d.zMin << nl << "mesh_z_Max " << d.zMax << endl;
+  os << "// --- snappyHexMesh seed point ---" << nl << "locInMeshX " << locX
+     << ";" << nl << "locInMeshY " << locY << ";" << nl << "locInMeshZ " << locZ
+     << ";" << endl;
 
   return 0;
 }
