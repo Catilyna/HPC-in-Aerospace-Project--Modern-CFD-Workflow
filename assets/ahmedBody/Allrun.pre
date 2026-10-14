@@ -3,6 +3,7 @@ cd ${0%/*} || exit 1    # run from this directory
 
 # Source tutorial run functions
 . "$WM_PROJECT_DIR/bin/tools/RunFunctions"
+set -e
 
 usage () {
     exec 1>&2
@@ -113,7 +114,10 @@ done
 
 [ ! -d 0 ] && cp -r 0.orig 0
 
-#- extract STL dimension
+#- validate STL geometry before proceeding with the workflow
+runApplication surfaceCheck constant/geometry/ahmedBody.stl
+
+#- extract STL dimensions
 runApplication getStlDim constant/geometry/ahmedBody.stl 0.5
 
 #- create the background mesh
