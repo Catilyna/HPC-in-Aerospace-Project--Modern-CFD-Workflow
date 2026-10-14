@@ -19,8 +19,8 @@ FoamFile
 #include "${FOAM_CASE}/system/domainParams"
 
 castellatedMesh on;
-snap            off;
-addLayers       off;
+snap            on;
+addLayers       on;
 
 geometry
 {

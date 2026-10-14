@@ -17,7 +17,7 @@ options:
                          - S: small, 100k cells
                          - M: medium, 1 M cells (default)
                          - L: large, 4.5M cells
-  -d | -display               reconstruct and display the final mesh in ParaView
+  -d | -display          reconstruct and display the final mesh in ParaView
 
 Runs the ${PWD##*/} simulation
 
