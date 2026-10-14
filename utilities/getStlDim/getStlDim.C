@@ -90,8 +90,9 @@ int main(int argc, char *argv[]) {
   // =========================================================================
 
   // X: upstream margin (20% Lx) and extended downstream wake region (1.80 Lx)
+  // TODO: Add wake region only for L size mesh
   const double refBoxXMin = std::max(d.xMin, bb.min().x() - 0.20 * Lx);
-  const double refBoxXMax = std::min(d.xMax, bb.max().x() + 1.80 * Lx);
+  const double refBoxXMax = std::min(d.xMax, bb.max().x() + 0.20 * Lx);
 
   // Y: symmetric lateral expansion clamped to the computational domain
   // boundaries (natively respects symmetry planes)

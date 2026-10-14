@@ -118,7 +118,7 @@ done
 runApplication surfaceCheck constant/geometry/ahmedBody.stl
 
 #- extract STL dimensions
-runApplication getStlDim constant/geometry/ahmedBody.stl 0.5
+runApplication getStlDim constant/geometry/ahmedBody.stl 0.1
 
 #- create the background mesh
 runApplication blockMesh
