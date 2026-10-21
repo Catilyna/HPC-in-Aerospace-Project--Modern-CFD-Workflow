@@ -118,7 +118,7 @@ castellatedMeshControls
         refinementBox
         {
             mode inside;
-            level     3;
+            level     4;
         }
     }
 
@@ -165,17 +165,17 @@ addLayersControls
     {
         body
         {
-            nSurfaceLayers 3;
+            nSurfaceLayers 10;
         }
         legs
         {
-            nSurfaceLayers 3;
+            nSurfaceLayers 10;
         }
     }
 
-    relativeSizes       on;
+    relativeSizes       off;
     expansionRatio      1.2;
-    finalLayerThickness 0.5;
+    firstLayerThickness 0.0005;
     minThickness        1e-3;
     maxThicknessToMedialRatio 0.6;
 }

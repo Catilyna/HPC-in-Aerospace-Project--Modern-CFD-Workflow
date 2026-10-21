@@ -89,19 +89,19 @@ int main(int argc, char *argv[]) {
   // REFINEMENT BOX CALCULATION
   // =========================================================================
 
-  // X: upstream margin (20% Lx) and extended downstream wake region (1.80 Lx)
+  // X: upstream margin (35% Lx) and extended downstream wake region (1.80 Lx)
   // TODO: Add wake region only for L size mesh
-  const double refBoxXMin = std::max(d.xMin, bb.min().x() - 0.20 * Lx);
-  const double refBoxXMax = std::min(d.xMax, bb.max().x() + 0.20 * Lx);
+  const double refBoxXMin = std::max(d.xMin, bb.min().x() - 0.35 * Lx);
+  const double refBoxXMax = std::min(d.xMax, bb.max().x() + 0.35 * Lx);
 
   // Y: symmetric lateral expansion clamped to the computational domain
-  // boundaries (natively respects symmetry planes)
-  const double refBoxYMin = std::max(d.yMin, bb.min().y() - 0.30 * Ly);
-  const double refBoxYMax = std::min(d.yMax, bb.max().y() + 0.30 * Ly);
+  // boundaries (natively respects symmetry planes) 40%
+  const double refBoxYMin = std::max(d.yMin, bb.min().y() - 0.40 * Ly);
+  const double refBoxYMax = std::min(d.yMax, bb.max().y() + 0.40 * Ly);
 
-  // Z: bounded from ground/road level up to 35% vehicle height above the roof
+  // Z: bounded from ground/road level up to 45% vehicle height above the roof
   const double refBoxZMin = std::max(d.zMin, bb.min().z());
-  const double refBoxZMax = std::min(d.zMax, bb.max().z() + 0.35 * Lz);
+  const double refBoxZMax = std::min(d.zMax, bb.max().z() + 0.45 * Lz);
 
   OFstream os("system/domainParams");
   os << "xMin " << d.xMin << ";" << nl << "xMax " << d.xMax << ";" << nl
