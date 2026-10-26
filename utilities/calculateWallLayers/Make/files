@@ -1,0 +1,3 @@
+calculateWallLayers.C
+
+EXE = $(FOAM_USER_APPBIN)/calculateWallLayers

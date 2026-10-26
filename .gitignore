@@ -44,7 +44,7 @@ build/
 Build/
 build-*/
 /utilities/getStlDim/Make/*/
-/utilities/calculateWallLayers/*/
+/utilities/calculateWallLayers/Make/*/
 
 # CMake generated files
 CMakeFiles/
