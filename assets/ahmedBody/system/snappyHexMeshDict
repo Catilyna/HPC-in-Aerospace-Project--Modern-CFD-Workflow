@@ -67,14 +67,14 @@ castellatedMeshControls
 
     maxLoadUnbalance 0.10; // useful when dealing with pararelisation
 
-    nCellsBetweenLevels 5; // Transition layers between two different refinements, to allow for smoother transition
+    nCellsBetweenLevels 4; // Transition layers between two different refinements, to allow for smoother transition
 
 
     features
     (
         {
             file "ahmedBody.eMesh"; // Featured mesh to be used
-            level 4; // refinement level of 4 along the features of the stl
+            level 0; // refinement level of 4 along the features of the stl
         }
 
     );
@@ -90,7 +90,7 @@ castellatedMeshControls
 
                 body // for each set of geometris in the stl, define a refinement level and a type of boundary (e.g: walls)
                 {
-                    level (3 4);
+                    level (4 4);
                     patchInfo
                     {
                         type wall;
@@ -100,7 +100,7 @@ castellatedMeshControls
 
                 legs 
                 {
-                    level (4 5);
+                    level (4 4);
                     patchInfo
                     {
                         type wall;
@@ -118,7 +118,7 @@ castellatedMeshControls
         refinementBox
         {
             mode inside;
-            level     4;
+            level     2;
         }
     }
 
@@ -165,16 +165,16 @@ addLayersControls
     {
         body
         {
-            nSurfaceLayers 10;
+            nSurfaceLayers 8;
         }
         legs
         {
-            nSurfaceLayers 10;
+            nSurfaceLayers 8;
         }
     }
 
     relativeSizes       off;
-    expansionRatio      1.2;
+    expansionRatio      1.12;
     firstLayerThickness 0.0005;
     minThickness        1e-3;
     maxThicknessToMedialRatio 0.6;

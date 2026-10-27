@@ -67,7 +67,7 @@ checkCores () {
 #- you need to use nCores <= the available physical ones
 nRefine=0;
 nCores=4;
-display=true;
+display=false;
 
 while [ "$#" -gt 0 ]
 do
@@ -118,7 +118,7 @@ done
 runApplication surfaceCheck constant/geometry/ahmedBody.stl
 
 #- extract STL dimensions
-runApplication getStlDim constant/geometry/ahmedBody.stl 0.1
+runApplication getStlDim constant/geometry/ahmedBody.stl 0.05
 
 #- create the background mesh
 runApplication blockMesh
