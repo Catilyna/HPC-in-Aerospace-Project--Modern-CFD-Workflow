@@ -31,12 +31,10 @@ Domain computeDomain(double Lx, double Ly, double Lz, double x0, double y0,
   return d;
 }
 
-scalar computeSurfaceArea(const triSurface& surface)
-{
+scalar computeSurfaceArea(const triSurface& surface) {
     scalar area = 0.0;
 
-    forAll(surface, facei)
-    {
+    forAll(surface, facei) {
         const labelledTri& tri = surface[facei];
 
         const point& a = surface.points()[tri[0]];
@@ -56,7 +54,15 @@ int main(int argc, char *argv[]) {
   argList::validArgs.append("targetSize");
   argList args(argc,
                argv); // Create an argument list from the command line arguments
+  
+  if (argc != 3) {
+    FatalErrorIn(args.executable())
+        << "Wrong number of arguments. Expected: " << args.executable()
+        << " <stlFile> <targetSize>" << nl << "Usage: "
+        << args.executable() << " <stlFile> <targetSize>" << exit(FatalError);
+  }
 
+  Info << "Reading STL file: " << args[1] << nl << endl;
   // Correct class for loading STL files natively
   triSurface surface(args[1]);
 
@@ -65,6 +71,12 @@ int main(int argc, char *argv[]) {
   std::cout << "STL surface area: " << surfaceArea << nl;
 
   const scalar targetSize = std::stod(args[2]);
+  if (targetSize <= 0) {
+    FatalErrorIn(args.executable())
+        << "Target size must be positive. Received targetSize = " << targetSize
+        << exit(FatalError);
+  }
+
   // Calculate bounding box natively in memory
   boundBox bb(surface.points(), true);
 
@@ -131,5 +143,8 @@ int main(int argc, char *argv[]) {
      << "refBoxYMax " << refBoxYMax << ";" << nl << "refBoxZMin " << refBoxZMin
      << ";" << nl << "refBoxZMax " << refBoxZMax << ";" << endl;
 
+  Info << "Writing domain parameters to system/domainParams" << nl << endl;
+  Info << "\nEnd\n" << endl;
+  
   return 0;
 }
