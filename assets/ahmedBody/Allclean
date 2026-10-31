@@ -21,5 +21,5 @@ rm -rf validation/segregated \
 rm -f problemFaces
 
 # Delete the system/domainParams file created by the getStlDim utility (if it exists)
-rm -f system/domainParams
+rm -f system/domainParams system/layerParams
 #------------------------------------------------------------------------------

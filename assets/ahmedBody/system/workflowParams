@@ -1,0 +1,36 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+ =========                |
+ \      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+  \    /   O peration     | Website:  https://openfoam.org
+   \  /    A nd           | Version:  14                                       
+    \/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+
+// Background mesh target cell size [m].
+backgroundMeshSize       0.05;
+
+// Number of background mesh refinement passes: 0=S, 1=M, 2=L.
+nRefine                   0;
+
+// Number of MPI subdomains. It must not exceed the available processors.
+nCores                    4;
+
+// Wall-layer target dimensionless wall distance.
+targetYPlus               50;
+
+// Representative external-flow velocity [m/s].
+referenceVelocity         30;
+
+// Fluid kinematic viscosity [m2/s].
+kinematicViscosity        1.5e-05;
+
+// Representative skin-friction coefficient [-].
+skinFrictionCoefficient   0.003;
+
+// Number of prism layers.
+nSurfaceLayers            8;
+
+// Ratio between successive layer thicknesses [-], must be greater than 1.
+expansionRatio            1.2;
+
+// ************************************************************************* //

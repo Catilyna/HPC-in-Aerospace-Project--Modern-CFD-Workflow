@@ -17,6 +17,7 @@ FoamFile
 #includeEtc "caseDicts/mesh/generation/snappyHexMeshDict.cfg"
 
 #include "${FOAM_CASE}/system/domainParams"
+#include "${FOAM_CASE}/system/layerParams"
 
 castellatedMesh on;
 snap            on;
@@ -165,17 +166,17 @@ addLayersControls
     {
         body
         {
-            nSurfaceLayers 8;
+            nSurfaceLayers $nSurfaceLayers;
         }
         legs
         {
-            nSurfaceLayers 8;
+            nSurfaceLayers $nSurfaceLayers;
         }
     }
 
     relativeSizes       off;
-    expansionRatio      1.12;
-    firstLayerThickness 0.0005;
+    expansionRatio      $expansionRatio;
+    firstLayerThickness $firstLayerThickness;
     minThickness        1e-3;
     maxThicknessToMedialRatio 0.6;
 }

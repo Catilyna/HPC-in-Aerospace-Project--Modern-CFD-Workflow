@@ -47,6 +47,25 @@ setKeyword () {
     foamDictionary -entry "$_entry" -set "$_value" "$_file" > /dev/null
 }
 
+readKeyword () {
+    _entry="$1"
+    _file="$2"
+
+    if ! _value=$(foamDictionary -entry "$_entry" -value "$_file")
+    then
+        echo "Unable to read '$_entry' from '$_file'" >&2
+        return 1
+    fi
+
+    if [ -z "$_value" ]
+    then
+        echo "Entry '$_entry' in '$_file' must not be empty" >&2
+        return 1
+    fi
+
+    printf '%s\n' "$_value"
+}
+
 checkCores () {
     case "$1" in
         ''|*[!0-9]*|0)
@@ -64,10 +83,19 @@ checkCores () {
 }
 
 
-#- you need to use nCores <= the available physical ones
-nRefine=0;
-nCores=4;
+#- Defaults are read from one user-editable case dictionary.
+workflowDict=system/workflowParams
+nRefine=$(readKeyword nRefine "$workflowDict")
+nCores=$(readKeyword nCores "$workflowDict")
+backgroundMeshSize=$(readKeyword backgroundMeshSize "$workflowDict")
+targetYPlus=$(readKeyword targetYPlus "$workflowDict")
+referenceVelocity=$(readKeyword referenceVelocity "$workflowDict")
+kinematicViscosity=$(readKeyword kinematicViscosity "$workflowDict")
+skinFrictionCoefficient=$(readKeyword skinFrictionCoefficient "$workflowDict")
+nSurfaceLayers=$(readKeyword nSurfaceLayers "$workflowDict")
+expansionRatio=$(readKeyword expansionRatio "$workflowDict")
 display=false;
+checkCores "$nCores" || usage
 
 while [ "$#" -gt 0 ]
 do
@@ -114,11 +142,20 @@ done
 
 [ ! -d 0 ] && cp -r 0.orig 0
 
+#- calculate the wall-layer parameters from the workflow input dictionary
+runApplication calculateWallLayers \
+    "$targetYPlus" \
+    "$referenceVelocity" \
+    "$kinematicViscosity" \
+    "$skinFrictionCoefficient" \
+    "$nSurfaceLayers" \
+    "$expansionRatio"
+
 #- validate STL geometry before proceeding with the workflow
 runApplication surfaceCheck constant/geometry/ahmedBody.stl
 
 #- extract STL dimensions
-runApplication getStlDim constant/geometry/ahmedBody.stl 0.05
+runApplication getStlDim constant/geometry/ahmedBody.stl "$backgroundMeshSize"
 
 #- create the background mesh
 runApplication blockMesh

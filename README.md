@@ -131,11 +131,15 @@ Example:
 
 ```bash
 cd assets/ahmedBody
-calculateWallLayers 50 30 1.5e-05 0.003 10 1.2
+./Allrun.pre
 ```
 
-The command writes a file containing entries that can be included in
-`system/snappyHexMeshDict`:
+The workflow parameters are provided in the single user-editable file
+`assets/ahmedBody/system/workflowParams`. Edit this file before running the
+workflow; it contains the background mesh, parallel decomposition, and
+wall-layer inputs. `Allrun.pre` parses the entries and invokes
+`calculateWallLayers` automatically. The utility writes a file containing
+entries that are included in `system/snappyHexMeshDict`:
 
 ```foam
 #include "${FOAM_CASE}/system/layerParams"
