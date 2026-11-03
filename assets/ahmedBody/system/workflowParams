@@ -15,6 +15,14 @@ nRefine                   0;
 // Number of MPI subdomains. It must not exceed the available processors.
 nCores                    4;
 
+// Hard upper limit for the final mesh cell count.
+maxCells                  4000000;
+
+// Refinement controls used by snappyHexMesh and its preflight estimate.
+surfaceRefinementLevel    4;
+regionRefinementLevel     3;
+nCellsBetweenLevels       3;
+
 // Wall-layer target dimensionless wall distance.
 targetYPlus               50;
 
@@ -28,7 +36,7 @@ kinematicViscosity        1.5e-05;
 skinFrictionCoefficient   0.003;
 
 // Number of prism layers.
-nSurfaceLayers            8;
+nSurfaceLayers            5;
 
 // Ratio between successive layer thicknesses [-], must be greater than 1.
 expansionRatio            1.2;

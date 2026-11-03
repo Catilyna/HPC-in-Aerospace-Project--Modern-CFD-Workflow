@@ -22,4 +22,5 @@ rm -f problemFaces
 
 # Delete the system/domainParams file created by the getStlDim utility (if it exists)
 rm -f system/domainParams system/layerParams
+rm -f system/meshParams
 #------------------------------------------------------------------------------

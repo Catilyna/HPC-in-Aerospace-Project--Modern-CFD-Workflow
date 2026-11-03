@@ -136,8 +136,8 @@ cd assets/ahmedBody
 
 The workflow parameters are provided in the single user-editable file
 `assets/ahmedBody/system/workflowParams`. Edit this file before running the
-workflow; it contains the background mesh, parallel decomposition, and
-wall-layer inputs. `Allrun.pre` parses the entries and invokes
+workflow; it contains the background mesh, parallel decomposition, maximum
+cell count, and wall-layer inputs. `Allrun.pre` parses the entries and invokes
 `calculateWallLayers` automatically. The utility writes a file containing
 entries that are included in `system/snappyHexMeshDict`:
 
@@ -147,6 +147,15 @@ entries that are included in `system/snappyHexMeshDict`:
 
 The generated file contains `nSurfaceLayers`, `expansionRatio`,
 `firstLayerThickness`, and `totalLayerThickness`.
+
+`maxCells` is a hard upper limit for the generated mesh. Before meshing, the
+workflow estimates the final count from the generated domain volume, refinement
+box volume, STL surface area, refinement levels, transition width, and prism
+layer count. A conservative 25% margin is included, and the workflow rejects
+incompatible requests before starting `snappyHexMesh`. The configured
+refinement and quality settings are otherwise left unchanged so the available
+budget is used as effectively as possible. The final `checkMesh` result is
+also checked as a safety net.
 
 Note that the result of this utility is just an initial estimate. The local wall shear stress varies over the Ahmed body, and wherefore one fixed first-layer thickness cannot produce the target $y^+$ everywhere. After running the simulation, it is possible to calculate and inspect the actual wall-distance field with:
 
