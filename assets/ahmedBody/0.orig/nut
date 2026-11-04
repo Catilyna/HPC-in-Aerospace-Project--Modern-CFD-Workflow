@@ -12,51 +12,42 @@ FoamFile
     location    "0";
     object      nut;
 }
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+#include        "${FOAM_CASE}/constant/caseSettings"
 
 dimensions      [0 2 -1 0 0 0 0];
 
-internalField   uniform 0;
+internalField   uniform $turbulentNut;
 
 boundaryField
 {
-    //- Set patchGroups for constraint patches
-    #includeEtc "caseDicts/setConstraintTypes"
-
-    frontAndBack
+    freestream
     {
         type            calculated;
-        value           uniform 0;
+        value           uniform $turbulentNut;
     }
 
     inlet
     {
         type            calculated;
-        value           uniform 0;
+        value           uniform $turbulentNut;
     }
 
     outlet
     {
         type            calculated;
-        value           uniform 0;
+        value           uniform $turbulentNut;
     }
 
-    lowerWall
+    ground
     {
         type            nutkWallFunction;
-        value           uniform 0;
+        value           uniform $turbulentNut;
     }
 
-    upperWall
-    {
-        type            calculated;
-        value           uniform 0;
-    }
-
-    motorBikeGroup
+    "(body|legs)"
     {
         type            nutkWallFunction;
-        value           uniform 0;
+        value           uniform $turbulentNut;
     }
 }
 

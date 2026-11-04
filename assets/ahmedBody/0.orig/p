@@ -25,35 +25,35 @@ boundaryField
     inlet 
     {
         type            fixedValue;
-        value           unifor ($flowVelocity 0 0);
+        value           uniform $pressure;
     }
     
     outlet
     {
-        type            inletOutlet;
-        inletValue      uniform (0 0 0);
+        type            fixedValue;
+        value           uniform $pressure;
     }
 
     ground
     {
-        $inlet;
-    }
-
-    "(body|legs)"
-    {
-        type            noSlip;
+        type            zeroGradient;
     }
 
     freestream
     {
-        type            freestreamVelocity;
-        freestreamValue uniform ($flowVelocity 0 0);
+        type            freestreamPressure;
+        freestreamValue uniform $pressure;
+    }
+
+    "(body|legs)"
+    {
+        type            zeroGradient;
     }
 
     processor
     {
         type            processor;
-        value           uniform (0 0 0);
+        value           uniform $pressure;
     }
 }
 

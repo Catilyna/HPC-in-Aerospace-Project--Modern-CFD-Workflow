@@ -18,24 +18,24 @@ FoamFile
 
 dimensions      [0 1 -1 0 0 0 0];
 
-internalField   uniform $flowVelocity;
+internalField   uniform ($flowVelocity 0 0);
 
 boundaryField
 {
     inlet 
     {
         type            fixedValue;
-        value           unifor ($flowVelocity 0 0);
+        value           uniform ($flowVelocity 0 0);
     }
     outlet
     {
         type            inletOutlet;
-        inletValue      uniform (0 0 0);
+        inletValue      uniform $zeroVelocity;
     }
 
     ground
     {
-        $inlet;
+        type            noSlip;
     }
 
     "(body|legs)"
@@ -52,7 +52,7 @@ boundaryField
     processor
     {
         type            processor;
-        value           uniform (0 0 0);
+        value           uniform $zeroVelocity;
     }
 }
 

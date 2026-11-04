@@ -12,8 +12,6 @@ FoamFile
     location    "0";
     object      omega;
 }
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
 #include        "${FOAM_CASE}/constant/caseSettings"
 
 dimensions      [0 0 -1 0 0 0 0];
@@ -22,30 +20,37 @@ internalField   uniform $turbulentOmega;
 
 boundaryField
 {
-    //- Set patchGroups for constraint patches
-    #includeEtc "caseDicts/setConstraintTypes"
+    freestream
+    {
+        type            inletOutlet;
+        inletValue      uniform $turbulentOmega;
+        value           uniform $turbulentOmega;
+    }
 
-    #include "include/fixedInlet"
+    inlet
+    {
+        type            fixedValue;
+        value           uniform $turbulentOmega;
+    }
 
     outlet
     {
         type            inletOutlet;
-        inletValue      $internalField;
+        inletValue      uniform $turbulentOmega;
+        value           uniform $turbulentOmega;
     }
 
-    lowerWall
+    ground
     {
         type            omegaWallFunction;
-        value           $internalField;
+        value           uniform $turbulentOmega;
     }
 
-    motorBikeGroup
+    "(body|legs)"
     {
         type            omegaWallFunction;
-        value           $internalField;
+        value           uniform $turbulentOmega;
     }
-
-    #include "include/frontBackUpperPatches"
 }
 
 

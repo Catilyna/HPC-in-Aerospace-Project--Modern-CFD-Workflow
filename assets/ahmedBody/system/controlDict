@@ -13,6 +13,8 @@ FoamFile
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
+solver          incompressibleFluid;
+
 application     snappyHexMesh;
 
 startFrom       latestTime;
