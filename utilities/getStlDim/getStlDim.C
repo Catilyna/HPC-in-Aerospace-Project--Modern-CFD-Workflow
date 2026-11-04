@@ -130,6 +130,14 @@ int main(int argc, char *argv[]) {
      << "nCells (" << xNumCell << " " << yNumCell << " " << zNumCell << ");"
      << endl;
 
+  os << "domainVolume " << xLength * yLength * zLength << ";" << nl
+     << "refinementBoxVolume "
+     << (refBoxXMax - refBoxXMin) * (refBoxYMax - refBoxYMin) *
+            (refBoxZMax - refBoxZMin)
+     << ";" << nl
+     << "surfaceArea " << surfaceArea << ";" << nl
+     << "backgroundCellSize " << targetSize << ";" << endl;
+
   os << "// --- snappyHexMesh seed point ---" << nl << "locInMeshX " << locX
      << ";" << nl << "locInMeshY " << locY << ";" << nl << "locInMeshZ " << locZ
      << ";" << endl;

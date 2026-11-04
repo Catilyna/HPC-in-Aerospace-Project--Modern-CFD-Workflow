@@ -14,150 +14,102 @@ FoamFile
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-#includeEtc "caseDicts/mesh/generation/snappyHexMeshDict.cfg"
-
-#include "${FOAM_CASE}/system/domainParams"
-
+#includeEtc     "caseDicts/mesh/generation/snappyHexMeshDict.cfg"
+#include        "${FOAM_CASE}/system/domainParams"
+#include        "${FOAM_CASE}/system/layerParams"
+#include        "${FOAM_CASE}/system/workflowParams"
 castellatedMesh on;
+
 snap            on;
+
 addLayers       on;
 
 geometry
 {
-
     ahmedBody
     {
-        type triSurface;
-        file "ahmedBody.stl";
-        name ahmedBody;
+        type            triSurface;
+        file            "ahmedBody.stl";
+        name            ahmedBody;
         regions
         {
-            body //name of STL 'solid'
+            body
             {
-                name body; // name used in SHM (patch name on final mesh)
+                name            body;
             }
             legs
             {
-                name legs;
+                name            legs;
             }
         }
     }
-
     refinementBox
     {
-        type box;
-        min  $refBoxMin;  // or: ($refBoxXMin $refBoxYMin $refBoxZMin);
-        max  $refBoxMax;  // or: ($refBoxXMax $refBoxYMax $refBoxZMax);
+        type            box;
+        min             $refBoxMin;
+        max             $refBoxMax;
     }
-    
-};
+}
 
-// Settings for the castellatedMesh generation.
 castellatedMeshControls
 {
-
-    // Refinement parameters
-    // ~~~~~~~~~~~~~~~~~~~~~
-
-    maxLocalCells 100000;
-
-    maxGlobalCells 2000000;
-
+    maxLocalCells   100000;
+    maxGlobalCells  2000000;
     minRefinementCells 10;
-
-    maxLoadUnbalance 0.10; // useful when dealing with pararelisation
-
-    nCellsBetweenLevels 4; // Transition layers between two different refinements, to allow for smoother transition
-
-
-    features
-    (
-        {
-            file "ahmedBody.eMesh"; // Featured mesh to be used
-            level 0; // refinement level of 4 along the features of the stl
-        }
-
-    );
-
-    refinementSurfaces 
+    maxLoadUnbalance 0.1;
+    nCellsBetweenLevels $nCellsBetweenLevels;
+    features        ( { file "ahmedBody.eMesh" ; level 0 ; } );
+    refinementSurfaces
     {
         ahmedBody
         {
-            level (0 0);
-
+            level           ( 0 0 );
             regions
             {
-
-                body // for each set of geometris in the stl, define a refinement level and a type of boundary (e.g: walls)
+                body
                 {
-                    level (4 4);
+                    level           ( $surfaceRefinementLevel $surfaceRefinementLevel );
                     patchInfo
                     {
-                        type wall;
-                        inGroups (walls);
+                        type            wall;
+                        inGroups        ( walls );
                     }
                 }
-
-                legs 
+                legs
                 {
-                    level (4 4);
+                    level           ( $surfaceRefinementLevel $surfaceRefinementLevel );
                     patchInfo
                     {
-                        type wall;
-                        inGroups (walls);
+                        type            wall;
+                        inGroups        ( walls );
                     }
                 }
             }
         }
     }
-
-    resolveFeatureAngle 20;     // this cannot be automated, it depends on the geometry
-
+    resolveFeatureAngle 20;
     refinementRegions
     {
         refinementBox
         {
-            mode inside;
-            level     2;
+            mode            inside;
+            level           $regionRefinementLevel;
         }
     }
-
-    locationInMesh ($locInMeshX $locInMeshY $locInMeshZ); // inside point, given by the getStlDim utility
+    locationInMesh  ( $locInMeshX $locInMeshY $locInMeshZ );
 }
 
-
-// Settings for the snapping.
 snapControls
 {
-    nSmoothPatch 2;
-
-    // relative to cell size
-    tolerance 2.0;
-
-    //- Number of mesh displacement relaxation iterations.
-    nSolveIter 30;
-
-    //- Maximum number of snapping relaxation iterations. Should stop
-    //  before upon reaching a correct mesh.
-    nRelaxIter 5;
-
-    // Feature snapping
-
-    //- Number of feature edge snapping iterations.
-    //  Leave out altogether to disable.
+    nSmoothPatch    2;
+    tolerance       2;
+    nSolveIter      30;
+    nRelaxIter      5;
     nFeatureSnapIter 10;
-
-    //- Detect (geometric only) features by sampling the surface
-    //  (default=false).
     implicitFeatureSnap false;
-
-    //- Use castellatedMeshControls::features (default = true)
     explicitFeatureSnap true;
-
-    //- Detect points on multiple surfaces (only for explicitFeatureSnap)
     multiRegionFeatureSnap false;
 }
-
 
 addLayersControls
 {
@@ -165,27 +117,27 @@ addLayersControls
     {
         body
         {
-            nSurfaceLayers 8;
+            nSurfaceLayers  $nSurfaceLayers;
         }
         legs
         {
-            nSurfaceLayers 8;
+            nSurfaceLayers  $nSurfaceLayers;
         }
     }
-
-    relativeSizes       off;
-    expansionRatio      1.12;
-    firstLayerThickness 0.0005;
-    minThickness        1e-3;
+    relativeSizes   off;
+    expansionRatio  $expansionRatio;
+    firstLayerThickness $firstLayerThickness;
+    minThickness    0.001;
     maxThicknessToMedialRatio 0.6;
 }
 
-writeFlags
-(
-    scalarLevels
-    layerFields
-);
+writeFlags      ( scalarLevels layerFields );
 
-mergeTolerance 1e-6;
+mergeTolerance  1e-06;
+
+maxGlobalCells  4000000;
+
+maxLocalCells   4000000;
+
 
 // ************************************************************************* //
