@@ -23,12 +23,6 @@ boundaryField
     //- Set patchGroups for constraint patches
     #includeEtc "caseDicts/setConstraintTypes"
 
-    frontAndBack
-    {
-        type            calculated;
-        value           uniform 0;
-    }
-
     inlet
     {
         type            calculated;
@@ -41,23 +35,18 @@ boundaryField
         value           uniform 0;
     }
 
-    lowerWall
+    ground
     {
         type            nutkWallFunction;
         value           uniform 0;
     }
 
-    upperWall
-    {
-        type            calculated;
-        value           uniform 0;
-    }
-
-    motorBikeGroup
+    "(body|legs)"
     {
         type            nutkWallFunction;
         value           uniform 0;
     }
+
 }
 
 

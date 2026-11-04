@@ -22,38 +22,31 @@ internalField   uniform $pressure;
 
 boundaryField
 {
+
+    //- Set patchGroups for constraint patches
+    #includeEtc "caseDicts/setConstraintTypes"
+
     inlet 
     {
-        type            fixedValue;
-        value           unifor ($flowVelocity 0 0);
+        type            zeroGradient;
     }
     
     outlet
     {
-        type            inletOutlet;
-        inletValue      uniform (0 0 0);
+        type            fixedValue;
+        value           $internalField;
+        //type            inletOutlet;
+        // inletValue      $internalField;  
     }
 
     ground
     {
-        $inlet;
+        type            zeroGradient;
     }
 
     "(body|legs)"
     {
-        type            noSlip;
-    }
-
-    freestream
-    {
-        type            freestreamVelocity;
-        freestreamValue uniform ($flowVelocity 0 0);
-    }
-
-    processor
-    {
-        type            processor;
-        value           uniform (0 0 0);
+        type            zeroGradient;
     }
 }
 

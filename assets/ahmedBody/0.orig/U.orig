@@ -18,15 +18,19 @@ FoamFile
 
 dimensions      [0 1 -1 0 0 0 0];
 
-internalField   uniform $flowVelocity;
+internalField   uniform ($flowVelocity 0 0);
 
 boundaryField
 {
+   //- Set patchGroups for constraint patches
+    #includeEtc "caseDicts/setConstraintTypes"
+
     inlet 
     {
         type            fixedValue;
-        value           unifor ($flowVelocity 0 0);
+        value           uniform ($flowVelocity 0 0);
     }
+
     outlet
     {
         type            inletOutlet;
@@ -35,24 +39,12 @@ boundaryField
 
     ground
     {
-        $inlet;
+        type            noSlip;
     }
 
     "(body|legs)"
     {
         type            noSlip;
-    }
-
-    freestream
-    {
-        type            freestreamVelocity;
-        freestreamValue uniform ($flowVelocity 0 0);
-    }
-
-    processor
-    {
-        type            processor;
-        value           uniform (0 0 0);
     }
 }
 

@@ -7,7 +7,7 @@
 \*---------------------------------------------------------------------------*/
 
 // Background mesh target cell size [m].
-backgroundMeshSize       0.05;
+backgroundMeshSize       0.07;
 
 // Number of background mesh refinement passes: 0=S, 1=M, 2=L.
 nRefine                   0;
