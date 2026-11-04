@@ -12,8 +12,6 @@ FoamFile
     location    "0";
     object      k;
 }
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
 #include        "${FOAM_CASE}/constant/caseSettings"
 
 dimensions      [0 2 -2 0 0 0 0];
@@ -22,31 +20,37 @@ internalField   uniform $turbulentKE;
 
 boundaryField
 {
-    //- Set patchGroups for constraint patches
-    #includeEtc "caseDicts/setConstraintTypes"
+    freestream
+    {
+        type            inletOutlet;
+        inletValue      uniform $turbulentKE;
+        value           uniform $turbulentKE;
+    }
 
-    //- Define inlet conditions
-    #include "include/fixedInlet"
+    inlet
+    {
+        type            fixedValue;
+        value           uniform $turbulentKE;
+    }
 
     outlet
     {
         type            inletOutlet;
-        inletValue      $internalField;
+        inletValue      uniform $turbulentKE;
+        value           uniform $turbulentKE;
     }
 
-    lowerWall
+    ground
     {
         type            kqRWallFunction;
-        value           $internalField;
+        value           uniform $turbulentKE;
     }
 
-    motorBikeGroup
+    "(body|legs)"
     {
         type            kqRWallFunction;
-        value           $internalField;
+        value           uniform $turbulentKE;
     }
-
-    #include "include/frontBackUpperPatches"
 }
 
 
