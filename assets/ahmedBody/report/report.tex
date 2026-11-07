@@ -1,0 +1,51 @@
+% report/report.tex
+\documentclass[10pt,a4paper,twocolumn]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx}
+\usepackage{geometry}
+\geometry{margin=1.5cm}
+\usepackage{caption}
+
+\graphicspath{{images/}}
+
+\title{\textbf{Automated OpenFOAM Post-Processing Report}\\Single Ahmed Body Geometry}
+\author{Generated automatically post-simulation}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section{Flow Topology}
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=\linewidth]{streamlines.png}
+    \caption{Streamlines on the vertical symmetry plane $z=0$ for the single STL geometry.}
+\end{figure}
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=\linewidth]{velocity_vectors.png}
+    \caption{Velocity vectors on the vertical symmetry plane $z=0$.}
+\end{figure}
+
+\section{Turbulence Field}
+\begin{figure}[h!]
+    \centering
+   \includegraphics[width=\linewidth]{tke.png}
+   \caption{Turbulent kinetic energy contours on the symmetry plane.}
+\end{figure}
+
+\section{Velocity Profiles \& Spectra}
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=\linewidth]{velocity_profiles.png}
+    \caption{Streamwise and vertical velocity profiles at several downstream locations.}
+\end{figure}
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=\linewidth]{velocity_psd.png}
+    \caption{Power spectral density of streamwise velocity fluctuations at probe locations.}
+\end{figure}
+
+\end{document}
