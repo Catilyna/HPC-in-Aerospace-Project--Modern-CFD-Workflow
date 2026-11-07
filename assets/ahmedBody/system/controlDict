@@ -44,5 +44,10 @@ timePrecision   6;
 
 runTimeModifiable true;
 
+functions
+{
+    #include "postProcessing"
+}
+
 
 // ************************************************************************* //
