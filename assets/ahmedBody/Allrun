@@ -7,9 +7,32 @@ cd ${0%/*} || exit 1    # Run from this directory
 # extract mesh from archive to skip mesh generation
 #tar xzf constant/polyMesh.tgz -C constant/
 
+echo "------------------------------------"
+echo -e "Copying initial conditions and \ndecomposing the domain"
+echo "------------------------------------"
 [ ! -d 0 ] && cp -r 0.orig 0 && decomposePar -fields
+echo -e "\n"
 
+echo "------------------------------------"
+echo "Running the simulation"
+echo "------------------------------------"
 runParallel potentialFoam 
 runParallel foamRun 
+echo -e "\n"
+
+echo "------------------------------------"
+echo "Reconstructing final results"
+echo "------------------------------------"
+runParallel reconstructPar -constant
+echo -e "\n"
+
+echo "------------------------------------"
+echo "Executing post-processing"
+echo "------------------------------------"
+runApplication postProcess -func "vorticity(UMean)"
+runApplication postProcess -func vorticity
+echo -e "\n"
+
+echo "Simulation completed successfully."
 
 #---------
