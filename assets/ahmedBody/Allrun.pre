@@ -320,7 +320,7 @@ rm -rf cellLevel level0Edge pointLevel surfaceIndex \
 runParallel checkMesh
 checkFinalCellCount
 
-runApplication reconstructPar -constant
+runApplication reconstructPar -constant > log.reconstructParMesh 2>&1
 
 if $display
 then
