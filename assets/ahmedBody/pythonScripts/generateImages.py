@@ -20,8 +20,10 @@ view.UseColorPaletteForBackground = 0 # Disables the global palette override
 view.Background = [1.0, 1.0, 1.0]
 
 # Align camera to look at the XZ plane
-view.CameraPosition = [2.0, 5.0, 0.0]
-view.CameraFocalPoint = [0.0, 0.17, 0.0]
+x_offset = 0.5 # Left offset to center the STL in the view  
+
+view.CameraPosition = [x_offset, 5.0, 0.0]
+view.CameraFocalPoint = [x_offset, 0.17, 0.0]
 view.CameraViewUp = [0.0, 0.0, 1.0]
 view.CameraParallelProjection = 1 # Orthographic projection
 view.CameraParallelScale = 0.6 # Set the parallel scale to control the zoom level of the orthographic projection
@@ -34,7 +36,7 @@ slice_z.SliceType.Normal = [0.0, 1.0, 0.0]
 
 # Domain slice
 slice_disp = Show(slice_z, view)
-ColorBy(slice_disp, None) # Turn off field coloring to show uniform grey
+ColorBy(slice_disp, ('POINTS', '')) # Turn off field coloring to show uniform grey
 slice_disp.Representation = 'Surface With Edges' # Show edges
 slice_disp.DiffuseColor = [0.7, 0.7, 0.7]
 SaveScreenshot(os.path.join(img_dir, 'domain_slice.png'), view)
@@ -72,10 +74,10 @@ c2p_slice.UpdatePipeline()
 # Create a 2D vector field on the plane by setting Uy = 0
 calc = Calculator(Input=c2p_slice)
 calc.ResultArrayName = 'U_2D'
-calc.Function = 'U_X*iHat + 0*jHat + U_Z*kHat'
+calc.Function = 'U[0]*iHat + 0*jHat + U[2]*kHat'
 calc.UpdatePipeline()
 bg_disp = Show(slice_z, view)
-ColorBy(bg_disp, None)
+ColorBy(bg_disp, ('POINTS', ''))
 bg_disp.Representation = 'Surface'
 bg_disp.DiffuseColor = [0.85, 0.85, 0.85]
 # Configure 2D streamlines
