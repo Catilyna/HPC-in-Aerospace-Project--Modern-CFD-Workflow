@@ -1,4 +1,5 @@
 """Generate plots from the single Ahmed-body OpenFOAM case."""
+from io import StringIO
 from pathlib import Path
 import re
 
@@ -20,7 +21,7 @@ def latest_directory(directory: Path) -> Path | None:
 def plot_profiles() -> bool:
     output_dir = CASE_DIR / "postProcessing" / "velocityProfiles"
     latest_dir = latest_directory(output_dir) if output_dir.is_dir() else None
-    files = sorted(latest_dir.glob("*_U.xy")) if latest_dir else []
+    files = sorted(latest_dir.glob("*.xy")) if latest_dir else []
     if not files:
         print("No U velocity profiles found; run the OpenFOAM case first.")
         return False
@@ -28,13 +29,13 @@ def plot_profiles() -> bool:
     fig, (streamwise, vertical) = plt.subplots(1, 2, figsize=(10, 4))
     for filepath in files:
         data = np.loadtxt(filepath, comments="#")
-        if data.ndim != 2 or data.shape[1] < 5:
-            print(f"Skipping {filepath}: expected x y z Ux Uy Uz columns.")
+        if data.ndim != 2 or data.shape[1] < 4:
+            print(f"Skipping {filepath}: expected y Ux Uy Uz columns.")
             continue
-        label = re.sub(r"_", "/", filepath.stem.removesuffix("_U"))
-        y = data[:, 1]
-        streamwise.plot(data[:, 3], y, label=label)
-        vertical.plot(data[:, 4], y, label=label)
+        label = re.sub(r"_", "/", filepath.stem)
+        y = data[:, 0]
+        streamwise.plot(data[:, 1], y, label=label)
+        vertical.plot(data[:, 2], y, label=label)
 
     for axis, title, xlabel in (
         (streamwise, "Mean streamwise velocity", r"$\langle U_x\rangle$ [m/s]"),
@@ -58,7 +59,8 @@ def plot_psd() -> bool:
         print("No probe data found; run the OpenFOAM case first.")
         return False
 
-    data = np.loadtxt(filepath, comments="#")
+    probe_text = re.sub(r"[()]", " ", filepath.read_text())
+    data = np.loadtxt(StringIO(probe_text), comments="#")
     if data.ndim != 2 or data.shape[0] < 2:
         print(f"Skipping {filepath}: not enough samples.")
         return False
@@ -90,6 +92,8 @@ def plot_psd() -> bool:
 
 if __name__ == "__main__":
     IMAGE_DIR.mkdir(parents=True, exist_ok=True)
-    plot_profiles()
-    plot_psd()
+    profiles_created = plot_profiles()
+    psd_created = plot_psd()
+    if not profiles_created or not psd_created:
+        raise SystemExit(1)
     print(f"Plots saved to {IMAGE_DIR}")
