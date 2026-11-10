@@ -1,5 +1,6 @@
 #!/bin/sh
 cd ${0%/*} || exit 1    # Run from this directory
+set -e
 
 # Source tutorial run functions
 . $WM_PROJECT_DIR/bin/tools/RunFunctions
@@ -8,29 +9,29 @@ cd ${0%/*} || exit 1    # Run from this directory
 #tar xzf constant/polyMesh.tgz -C constant/
 
 echo "------------------------------------"
-echo -e "Copying initial conditions and \ndecomposing the domain"
+printf "Copying initial conditions and \ndecomposing the domain\n"
 echo "------------------------------------"
 [ ! -d 0 ] && cp -r 0.orig 0 && decomposePar -fields
-echo -e "\n"
+printf "\n"
 
 echo "------------------------------------"
 echo "Running the simulation"
 echo "------------------------------------"
 runParallel potentialFoam 
 runParallel foamRun 
-echo -e "\n"
+printf "\n"
 
 echo "------------------------------------"
 echo "Reconstructing final results"
 echo "------------------------------------"
-runApplication reconstructPar -constant
-echo -e "\n"
+runApplication reconstructPar
+printf "\n"
 
 echo "------------------------------------"
 echo "Executing post-processing"
 echo "------------------------------------"
 runApplication foamPostProcess -latestTime -func vorticity
-echo -e "\n"
+printf "\n"
 
 echo "Simulation completed successfully."
 
