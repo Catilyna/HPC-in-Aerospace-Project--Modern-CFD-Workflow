@@ -1,7 +1,6 @@
 #!/bin/sh
 cd "${0%/*}" || exit 1
 set -e
-
 echo "------------------------------------"
 printf '%s\n' "Creating image folder"
 echo "------------------------------------"
