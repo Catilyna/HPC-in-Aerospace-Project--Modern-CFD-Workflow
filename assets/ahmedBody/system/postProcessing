@@ -81,6 +81,7 @@ velocityProfiles
 }
 
 // Surface sampling of the available solution fields.
+// Surface sampling in VTK format for slices and transverse planes
 wakePlanes
 {
     type            surfaces;
@@ -88,7 +89,7 @@ wakePlanes
     writeControl    writeTime;
     surfaceFormat   vtk;
     interpolationScheme cellPoint;
-    fields          (U k);
+    fields          (U k p UMean kMean);
     
     surfaces
     (
@@ -96,8 +97,57 @@ wakePlanes
         {
             type        cuttingPlane;
             planeType   pointAndNormal;
-            point       (0 0 0);
-            normal      (0 0 1);
+            point       (0 0.17 0);
+            normal      (0 1 0);
+        }
+        transverse_x010
+        {
+            type        cuttingPlane;
+            planeType   pointAndNormal;
+            point       (0.10 0.10 0);
+            normal      (1 0 0);
+        }
+        transverse_x020
+        {
+            type        cuttingPlane;
+            planeType   pointAndNormal;
+            point       (0.20 0.10 0);
+            normal      (1 0 0);
+        }
+        transverse_x030
+        {
+            type        cuttingPlane;
+            planeType   pointAndNormal;
+            point       (0.30 0.10 0);
+            normal      (1 0 0);
+        }
+        transverse_x050
+        {
+            type        cuttingPlane;
+            planeType   pointAndNormal;
+            point       (0.50 0.10 0);
+            normal      (1 0 0);
+        }
+        transverse_x060
+        {
+            type        cuttingPlane;
+            planeType   pointAndNormal;
+            point       (0.60 0.10 0);
+            normal      (1 0 0);
+        }
+        transverse_x070
+        {
+            type        cuttingPlane;
+            planeType   pointAndNormal;
+            point       (0.70 0.10 0);
+            normal      (1 0 0);
+        }
+        transverse_x100
+        {
+            type        cuttingPlane;
+            planeType   pointAndNormal;
+            point       (1.00 0.10 0);
+            normal      (1 0 0);
         }
         transverse_x120
         {
@@ -119,6 +169,31 @@ wakePlanes
             planeType   pointAndNormal;
             point       (2.00 0.10 0);
             normal      (1 0 0);
+        }
+    );
+}
+
+// Surface extraction in VTK format for body and leg geometry patches
+bodySurfaces
+{
+    type            surfaces;
+    libs            ("libsampling.so");
+    writeControl    writeTime;
+    surfaceFormat   vtk;
+    interpolationScheme cellPoint;
+    fields          (U p);
+    
+    surfaces
+    (
+        body
+        {
+            type        patch;
+            patches     (body);
+        }
+        legs
+        {
+            type        patch;
+            patches     (legs);
         }
     );
 }
