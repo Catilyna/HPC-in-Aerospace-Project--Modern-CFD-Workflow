@@ -1,16 +1,32 @@
-// Time-averaged fields are written by fieldAverage at write times.
+// ---------------------------------------------------------------------------
+// Post-processing function objects, arranged to reproduce the figures of
+// Tunay, Sahin & Ozbolat, Exp. Therm. Fluid Sci. 57 (2014) 165-176.
+//
+// Coordinate convention of THIS case: x streamwise, z VERTICAL, y spanwise,
+// vertical symmetry plane y = 0.17 (body centreline).  The paper's (x, y, z)
+// correspond to this case's (x, z, y).
+//
+// Geometry used to place stations/probes:
+//     H     = 0.288    model height
+//     xRear = 1.044    x of the rear vertical face (x/H = 0)
+//     zBot  = 0.05     z of the underside of the body (paper's y/H = 0)
+//     x = xRear + (x/H)*H        z = zBot + (paper y/H)*H
+// ---------------------------------------------------------------------------
+
+// Time-averaged fields are written once with the final solution.
 fieldAverage1
 {
     type            fieldAverage;
     libs            ("libfieldFunctionObjects.so");
     writeControl    writeTime;
-    timeStart       1.0; // Adjust based on when flow reaches statistical stationarity
+    timeStart       1.0; // Should be after the final solution is reached, so that the mean fields are written once. T
+    // TODO: how to ensure that the simulation reached stationarity??
     fields
     (
         U
         {
             mean        on;
-            prime2Mean  on;
+            prime2Mean  on;   // -> UPrime2Mean, needed for the TKE (Fig. 11)
             base        time;
         }
         k
@@ -21,8 +37,11 @@ fieldAverage1
     );
 }
 
-// High-Frequency Probes for Spectral Analysis (Fig. 13)
-// Probe points are in the downstream wake of the single STL.
+// High-frequency probes for spectral analysis (paper Fig. 13).
+// Five points in the upper and lower shear layers behind the body, placed
+// at the (x/H, paper y/H) of the paper's points 1..5 (here: z vertical, y = 0.17):
+//   1 (0.61,-0.030)  2 (0.56, 0.940)  3 (0.97, 0.035)
+//   4 (0.43, 0.800)  5 (0.84,-0.033)
 probes1
 {
     type            probes;
@@ -30,18 +49,19 @@ probes1
     writeControl    timeStep;
     writeInterval   1;
     fields          (U);
-    
+
     probeLocations
     (
-        ( 1.20 0.10 0.0 )
-        ( 1.40 0.15 0.0 )
-        ( 1.60 0.05 0.0 )
-        ( 1.80 0.20 0.0 )
-        ( 2.00 0.10 0.0 )
+        ( 1.21968 0.17 0.04136 )   // 1  lower shear layer
+        ( 1.20528 0.17 0.32072 )   // 2  upper shear layer
+        ( 1.32336 0.17 0.06008 )   // 3  lower shear layer
+        ( 1.16784 0.17 0.28040 )   // 4  upper shear layer
+        ( 1.28592 0.17 0.04050 )   // 5  lower shear layer
     );
 }
 
-// Line sampling of the available solution fields.
+// Vertical (z) line sampling in the symmetry plane (y = 0.17) at x/H = 0.139,
+// 0.278 and 0.555 behind the rear face.
 velocityProfiles
 {
     type            sets;
@@ -49,39 +69,42 @@ velocityProfiles
     writeControl    writeTime;
     setFormat       raw;
     interpolationScheme cellPoint;
-    fields          (U);
-    
+    fields          (U UMean);
+
     sets
     (
         x_H_0_139
         {
             type        lineUniform;
-            axis        y;
-            start       (1.20 0.001 0.0);
-            end         (1.20 0.25 0.0);
+            axis        z;
+            start       (1.08403 0.17 0.001);
+            end         (1.08403 0.17 0.25);
             nPoints     200;
         }
         x_H_0_278
         {
             type        lineUniform;
-            axis        y;
-            start       (1.50 0.001 0.0);
-            end         (1.50 0.25 0.0);
+            axis        z;
+            start       (1.12406 0.17 0.001);
+            end         (1.12406 0.17 0.25);
             nPoints     200;
         }
         x_H_0_555
         {
             type        lineUniform;
-            axis        y;
-            start       (2.00 0.001 0.0);
-            end         (2.00 0.25 0.0);
+            axis        z;
+            start       (1.20384 0.17 0.001);
+            end         (1.20384 0.17 0.25);
             nPoints     200;
         }
     );
 }
 
-// Surface sampling of the available solution fields.
-// Surface sampling in VTK format for slices and transverse planes
+// Surface sampling in VTK format: symmetry plane (paper Figs 4-7, 9-13) and
+// the five transverse planes of paper Fig. 8 (x/H = 0.35, 0.70, 1.04, 1.39,
+// 1.74).  The scripts use the LAST time directory for the mean fields and the
+// last three time directories for the instantaneous snapshots (Fig. 12), so
+// the write interval should be ~1.6*H/U between the final write times.
 wakePlanes
 {
     type            surfaces;
@@ -89,8 +112,8 @@ wakePlanes
     writeControl    writeTime;
     surfaceFormat   vtk;
     interpolationScheme cellPoint;
-    fields          (U k p UMean kMean);
-    
+    fields          (U k p UMean kMean UPrime2Mean);
+
     surfaces
     (
         symmetryPlane
@@ -98,76 +121,41 @@ wakePlanes
             type        cuttingPlane;
             planeType   pointAndNormal;
             point       (0 0.17 0);
-            normal      (0 1 0);
+            normal      (0 1 0);      // y = 0.17 : vertical symmetry plane (body centreline)
         }
-        transverse_x010
+        transverse_xH035
         {
             type        cuttingPlane;
             planeType   pointAndNormal;
-            point       (0.10 0.10 0);
+            point       (1.1448 0 0);
             normal      (1 0 0);
         }
-        transverse_x020
+        transverse_xH070
         {
             type        cuttingPlane;
             planeType   pointAndNormal;
-            point       (0.20 0.10 0);
+            point       (1.2456 0 0);
             normal      (1 0 0);
         }
-        transverse_x030
+        transverse_xH104
         {
             type        cuttingPlane;
             planeType   pointAndNormal;
-            point       (0.30 0.10 0);
+            point       (1.34352 0 0);
             normal      (1 0 0);
         }
-        transverse_x050
+        transverse_xH139
         {
             type        cuttingPlane;
             planeType   pointAndNormal;
-            point       (0.50 0.10 0);
+            point       (1.44432 0 0);
             normal      (1 0 0);
         }
-        transverse_x060
+        transverse_xH174
         {
             type        cuttingPlane;
             planeType   pointAndNormal;
-            point       (0.60 0.10 0);
-            normal      (1 0 0);
-        }
-        transverse_x070
-        {
-            type        cuttingPlane;
-            planeType   pointAndNormal;
-            point       (0.70 0.10 0);
-            normal      (1 0 0);
-        }
-        transverse_x100
-        {
-            type        cuttingPlane;
-            planeType   pointAndNormal;
-            point       (1.00 0.10 0);
-            normal      (1 0 0);
-        }
-        transverse_x120
-        {
-            type        cuttingPlane;
-            planeType   pointAndNormal;
-            point       (1.20 0.10 0);
-            normal      (1 0 0);
-        }
-        transverse_x150
-        {
-            type        cuttingPlane;
-            planeType   pointAndNormal;
-            point       (1.50 0.10 0);
-            normal      (1 0 0);
-        }
-        transverse_x200
-        {
-            type        cuttingPlane;
-            planeType   pointAndNormal;
-            point       (2.00 0.10 0);
+            point       (1.54512 0 0);
             normal      (1 0 0);
         }
     );
@@ -182,7 +170,7 @@ bodySurfaces
     surfaceFormat   vtk;
     interpolationScheme cellPoint;
     fields          (U p);
-    
+
     surfaces
     (
         body

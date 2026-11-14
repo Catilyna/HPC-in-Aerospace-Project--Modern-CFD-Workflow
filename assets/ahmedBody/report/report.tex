@@ -1,4 +1,6 @@
 % report/report.tex
+% Figure numbers refer to Tunay, Sahin & Ozbolat, Exp. Therm. Fluid Sci. 57 (2014) 165-176.
+% Run scripts/generateImages.py and scripts/generatePlots.py before compiling.
 \documentclass[10pt,a4paper]{article}
 \usepackage[utf8]{inputenc}
 \usepackage{graphicx}
@@ -7,6 +9,28 @@
 \usepackage{caption}
 
 \graphicspath{{images/}}
+
+% \fig{file}{caption}: includes images/file if it exists, otherwise prints a
+% note in the log and a visible placeholder (so a missing figure does not stop the build).
+\newcommand{\fig}[3][\linewidth]{%
+  \IfFileExists{images/#2}{%
+    \begin{figure}[h!]\centering
+      \includegraphics[width=#1]{#2}
+      \caption{#3}
+    \end{figure}}{%
+    \typeout{Missing figure images/#2}%
+    \begin{figure}[h!]\centering
+      \fbox{\parbox{0.8\linewidth}{\centering\texttt{\detokenize{#2}} not generated}}
+      \caption{#3}
+    \end{figure}}}
+
+% \tab{file}{caption}: same for the generated tabular files.
+\newcommand{\tab}[2]{%
+  \IfFileExists{#1}{%
+    \begin{table}[h!]\centering
+      \caption{#2}
+      \input{#1}
+    \end{table}}{\typeout{Missing table #1}}}
 
 \title{\textbf{Automated OpenFOAM Post-Processing Report}\\Single Ahmed Body Geometry}
 \author{Generated automatically post-simulation}
@@ -17,66 +41,63 @@
 \clearpage
 
 \section{Domain Geometry}
-\begin{figure}[h!]
-    \centering
-    \includegraphics[width=\linewidth]{ahmed_body_and_legs.png}
-    \caption{Failed generation of the \texttt{addLayers} zones.}
-\end{figure}
-
-\begin{figure}[h!]
-    \centering
-    \includegraphics[width=\linewidth]{domain_slice.png}
-    \caption{Slice of the computational domain on the symmetry plane.}
-\end{figure}
-\clearpage 
-
-\section{Flow Topology}
-\begin{figure}[h!]
-    \centering
-    \includegraphics[width=\linewidth]{streamlines.png}
-    \caption{Streamlines on the vertical symmetry plane for the single STL geometry.}
-\end{figure}
-
-\begin{figure}[h!]
-    \centering
-    \includegraphics[width=\linewidth]{velocity_vectors.png}
-    \caption{Velocity vectors on the vertical symmetry plane.}
-\end{figure}
+\fig{ahmed_body_and_legs.png}{Ahmed body and legs (cf.\ paper Fig.~1).}
+\fig{domain_slice.png}{Slice of the computational domain on the vertical symmetry plane.}
 \clearpage
 
-\section{Domain Fields}
-
+\section{Time-Averaged Flow in the Symmetry Plane}
+\fig{fig04_streamlines.png}{Patterns of time-averaged streamlines $\langle\psi\rangle$ in the vertical
+  vertical symmetry plane, with the critical points $F_1$, $F_2$ (foci) and $S$ (saddle) (cf.\ paper Fig.~4).}
 \begin{figure}[h!]
-    \centering
-    \includegraphics[width=\linewidth]{velocity_field.png}
-    \caption{Velocity magnitude on the domain slice.}
+  \centering
+  \IfFileExists{images/fig05_critical_points.png}{%
+    \includegraphics[width=0.55\linewidth]{fig05_critical_points.png}}{\typeout{Missing fig05}}
+  \caption{Locations of the critical points in the wake region downstream of the body (cf.\ paper Fig.~5).}
 \end{figure}
+\tab{critical_points.tex}{Detected critical points of the mean in-plane velocity field in the wake.}
+\clearpage
 
-\begin{figure}[h!]
-    \centering
-    \includegraphics[width=\linewidth]{pressure_field.png}
-    \caption{Pressure field on the domain slice.}
-\end{figure}
+\fig{fig06_vorticity.png}{Patterns of time-averaged vorticity contours $\langle\omega\rangle H/U$ in the
+  symmetry plane. Solid lines: positive, dashed lines: negative (cf.\ paper Fig.~6).}
+\fig{fig07_velocity_vectors.png}{Time-averaged velocity vector map $\langle V\rangle$ in the symmetry
+  plane. The thick line is $\langle u\rangle=0$, which bounds the reversed-flow region (cf.\ paper Fig.~7).}
+\clearpage
+
+\section{Transversal Planes}
+\fig[0.85\linewidth]{fig08_vorticity_transverse.png}{Time-averaged streamwise vorticity contours in
+  transversal $yz$-planes at $x/H=0.35$, $0.70$, $1.04$, $1.39$ and $1.74$, seen from downstream
+  (cf.\ paper Fig.~8).}
+\clearpage
+
+\section{Velocity Profiles}
+\fig{fig09_u_profiles.png}{Profiles of the time-averaged normalized streamwise velocity
+  $\langle u\rangle/U$ in the symmetry plane along the slanted surface and in the wake (cf.\ paper Fig.~9).}
+\fig{fig10_v_profiles.png}{Profiles of the time-averaged normalized vertical velocity
+  $\langle v\rangle/U$ in the symmetry plane along the slanted surface and in the wake (cf.\ paper Fig.~10).}
+\fig[0.8\linewidth]{velocity_profiles.png}{Mean velocity profiles at the line-sampled wake stations.}
 \clearpage
 
 \section{Turbulence Field}
-\begin{figure}[h!]
-    \centering
-   \includegraphics[width=\linewidth]{tke.png}
-   \caption{Turbulent kinetic energy contours on the symmetry plane.}
-\end{figure}
+\fig{fig11_tke.png}{Patterns of time-averaged turbulent kinetic energy $\langle TKE\rangle/U^2$ in the
+  symmetry plane (cf.\ paper Fig.~11).}
+\fig{tke.png}{Turbulent kinetic energy ($k$) contours on the symmetry plane (Turbo colour map).}
 \clearpage
 
-\section{Velocity Profiles \& Spectra}
-\begin{figure}[h!]
-    \centering
-    \includegraphics[width=\linewidth]{velocity_profiles.png}
-    \caption{Streamwise and vertical velocity profiles at several downstream locations.}
-\end{figure}
-\begin{figure}[h!]
-    \centering
-    \includegraphics[width=\linewidth]{velocity_psd.png}
-    \caption{Power spectral density of streamwise velocity fluctuations at probe locations.}
-\end{figure}
+\section{Unsteady Flow}
+\fig{fig12_vorticity_instant.png}{Patterns of instantaneous vorticity contours $\omega H/U$ in the
+  symmetry plane at three consecutive output times $t^*=tU/H$ (cf.\ paper Fig.~12).}
+\clearpage
+\fig{velocity_psd.png}{Probe locations on the mean vorticity map (top) and spectra of the streamwise
+  velocity $u$ (middle) and the vertical velocity $v$ (bottom) at the probe points (cf.\ paper Fig.~13).}
+\tab{strouhal.tex}{Dominant frequencies and Strouhal numbers $St_H=fH/U$ at the probe points
+  (cf.\ paper Table~2).}
+\clearpage
+
+\section{Additional Colour Fields (Turbo)}
+\fig{velocity_field.png}{Velocity magnitude on the symmetry plane.}
+\fig{pressure_field.png}{Pressure field on the symmetry plane.}
+\clearpage
+\fig{streamlines.png}{Streamlines on the symmetry plane coloured by velocity magnitude.}
+\fig{velocity_vectors.png}{Velocity vectors on the symmetry plane coloured by velocity magnitude.}
 
 \end{document}
