@@ -8,8 +8,8 @@ set -e
 # rename the log file for reconstructPar.log to reconstructParMesh.log
 # otherwise the reconstructPar utility will not run
 # If it is not found, skip the renaming step (no need to rename)
-if [ -f reconstructPar.log ]; then
-    mv reconstructPar.log reconstructParMesh.log
+if [ -f log.reconstructPar ]; then
+    mv log.reconstructPar log.reconstructParMesh
 fi
 
 
