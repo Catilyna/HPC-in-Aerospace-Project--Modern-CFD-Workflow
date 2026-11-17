@@ -199,6 +199,7 @@ def detect_case() -> Case:
     case.hull = None
     case.body_z = None
     case.span_center = 0.0
+    case.ground = None                      # z of the ground: set from the symmetry plane in main()
     points = None
     body_dir = latest_time_dir(POST_DIR / "bodySurfaces")
     if body_dir and (body_dir / "body.vtk").exists():
@@ -221,6 +222,8 @@ def detect_case() -> Case:
     case.H = MODEL_H or height
     case.x_rear = X_REAR if X_REAR is not None else x_rear
     case.y_bottom = Y_BOTTOM if Y_BOTTOM is not None else y_bottom
+    if case.ground is None:
+        case.ground = case.y_bottom - 0.17 * case.H      # fallback: standard ground clearance
     case.slant_start = (x_slant - case.x_rear) / case.H          # x/H of the slant leading edge (<0)
     u_inf = U_INF or detect_u_inf()
     if u_inf is None:
@@ -329,7 +332,7 @@ def window_mask(triang, xlim, ylim):
 
 
 def default_ylim(case: Case):
-    return (-case.y_bottom / case.H - 0.03, 1.45)
+    return ((case.ground - case.y_bottom) / case.H - 0.03, 1.45)
 
 
 def symmetric_levels(fields, n=10):
@@ -411,7 +414,7 @@ def find_critical_points(triang, u, v, case: Case):
     l3 = 1 - l1 - l2
     tol = 1e-9
     inside = np.isfinite(px) & np.isfinite(py) & (l1 >= -tol) & (l2 >= -tol) & (l3 >= -tol)
-    ground = -case.y_bottom / case.H
+    ground = (case.ground - case.y_bottom) / case.H
     inside &= (px >= 0.0) & (px <= XLIM[1]) & (py >= ground + 0.01) & (py <= 1.3)
 
     found = []
@@ -536,11 +539,12 @@ def fig_velocity_vectors(sym, case):
     u = sym.data[vel][:, IX] / case.u_inf
     v = sym.data[vel][:, IV] / case.u_inf
     ylim = default_ylim(case)
-    _, _, Xq, Yq, (uq, vq) = grid_sample(triang, [u, v], XLIM, ylim, nx=85)
-    _, _, Xf, Yf, (uf,) = grid_sample(triang, [u], XLIM, ylim, nx=700)
+    vector_nx = 30
+    _, _, Xq, Yq, (uq, vq) = grid_sample(triang, [u, v], XLIM, ylim, nx=vector_nx)
+    _, _, Xf, Yf, (uf,) = grid_sample(triang, [u], XLIM, ylim, nx=70)
     fig, ax = plt.subplots(figsize=(7, 3.6))
-    spacing = (XLIM[1] - XLIM[0]) / 85
-    ax.quiver(Xq, Yq, uq, vq, angles="xy", scale_units="xy", scale=1.0 / (1.2 * spacing),
+    spacing = (XLIM[1] - XLIM[0]) / vector_nx
+    ax.quiver(Xq, Yq, uq, vq, angles="xy", scale_units="xy", scale=2.9 / spacing,
               pivot="tail", width=0.0016, headwidth=3.5, headlength=4, color="k")
     if np.ma.min(uf) < 0 < np.ma.max(uf):
         ax.contour(Xf, Yf, uf, levels=[0.0], colors="k", linewidths=1.8, zorder=4)
@@ -822,7 +826,9 @@ def main() -> int:
         if sym.normal_axis != IS:
             warn("symmetryPlane.vtk is not normal to the spanwise axis (z): check the cuttingPlane in "
                  "postProcessing and the IX/IV/IS settings")
-        print("Arrays on the symmetry plane:", sorted(sym.data))
+        case.ground = float(sym.points[:, IV].min())      # the ground is the bottom of the symmetry plane
+        print(f"Ground at {case.ground:.4f} (clearance {case.y_bottom - case.ground:.4f} m); "
+              f"arrays on the symmetry plane:", sorted(sym.data))
     else:
         warn("postProcessing/wakePlanes/<time>/symmetryPlane.vtk not found")
 

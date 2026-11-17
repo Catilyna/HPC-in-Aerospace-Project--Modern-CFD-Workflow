@@ -6,10 +6,12 @@
 // vertical symmetry plane y = 0.17 (body centreline).  The paper's (x, y, z)
 // correspond to this case's (x, z, y).
 //
-// Geometry used to place stations/probes:
-//     H     = 0.288    model height
+// Geometry used to place stations/probes (values measured on this case's body.vtk;
+// recompute the coordinates below if the geometry changes):
+//     H     = 0.2894   model height
 //     xRear = 1.044    x of the rear vertical face (x/H = 0)
-//     zBot  = 0.05     z of the underside of the body (paper's y/H = 0)
+//     zBot  = -0.1453  z of the underside of the body (paper's y/H = 0).  NOTE: the ground is BELOW
+//                      zBot (about -0.19), not at z = 0
 //     x = xRear + (x/H)*H        z = zBot + (paper y/H)*H
 // ---------------------------------------------------------------------------
 
@@ -19,8 +21,7 @@ fieldAverage1
     type            fieldAverage;
     libs            ("libfieldFunctionObjects.so");
     writeControl    writeTime;
-    timeStart       1.0; // Should be after the final solution is reached, so that the mean fields are written once. T
-    // TODO: how to ensure that the simulation reached stationarity??
+    timeStart       1.0; // Adjust based on when flow reaches statistical stationarity
     fields
     (
         U
@@ -52,11 +53,11 @@ probes1
 
     probeLocations
     (
-        ( 1.21968 0.17 0.04136 )   // 1  lower shear layer
-        ( 1.20528 0.17 0.32072 )   // 2  upper shear layer
-        ( 1.32336 0.17 0.06008 )   // 3  lower shear layer
-        ( 1.16784 0.17 0.28040 )   // 4  upper shear layer
-        ( 1.28592 0.17 0.04050 )   // 5  lower shear layer
+        ( 1.22053 0.17 -0.15398 )   // 1  lower shear layer
+        ( 1.20606 0.17  0.12674 )   // 2  upper shear layer
+        ( 1.32472 0.17 -0.13517 )   // 3  lower shear layer
+        ( 1.16844 0.17  0.08622 )   // 4  upper shear layer
+        ( 1.28710 0.17 -0.15485 )   // 5  lower shear layer
     );
 }
 
@@ -77,24 +78,24 @@ velocityProfiles
         {
             type        lineUniform;
             axis        z;
-            start       (1.08403 0.17 0.001);
-            end         (1.08403 0.17 0.25);
+            start       (1.08423 0.17 -0.185);
+            end         (1.08423 0.17 0.231);
             nPoints     200;
         }
         x_H_0_278
         {
             type        lineUniform;
             axis        z;
-            start       (1.12406 0.17 0.001);
-            end         (1.12406 0.17 0.25);
+            start       (1.12445 0.17 -0.185);
+            end         (1.12445 0.17 0.231);
             nPoints     200;
         }
         x_H_0_555
         {
             type        lineUniform;
             axis        z;
-            start       (1.20384 0.17 0.001);
-            end         (1.20384 0.17 0.25);
+            start       (1.20462 0.17 -0.185);
+            end         (1.20462 0.17 0.231);
             nPoints     200;
         }
     );
@@ -127,35 +128,35 @@ wakePlanes
         {
             type        cuttingPlane;
             planeType   pointAndNormal;
-            point       (1.1448 0 0);
+            point       (1.14529 0 0);
             normal      (1 0 0);
         }
         transverse_xH070
         {
             type        cuttingPlane;
             planeType   pointAndNormal;
-            point       (1.2456 0 0);
+            point       (1.24658 0 0);
             normal      (1 0 0);
         }
         transverse_xH104
         {
             type        cuttingPlane;
             planeType   pointAndNormal;
-            point       (1.34352 0 0);
+            point       (1.34498 0 0);
             normal      (1 0 0);
         }
         transverse_xH139
         {
             type        cuttingPlane;
             planeType   pointAndNormal;
-            point       (1.44432 0 0);
+            point       (1.44627 0 0);
             normal      (1 0 0);
         }
         transverse_xH174
         {
             type        cuttingPlane;
             planeType   pointAndNormal;
-            point       (1.54512 0 0);
+            point       (1.54756 0 0);
             normal      (1 0 0);
         }
     );

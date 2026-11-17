@@ -20,6 +20,7 @@ from pathlib import Path
 import numpy as np
 import vtk
 from vtk.util.numpy_support import numpy_to_vtk, vtk_to_numpy
+from scipy.spatial import cKDTree
 
 # ----------------------------------------------------------------------------
 # Paths
@@ -294,6 +295,12 @@ def main():
         names = [sym.GetPointData().GetArrayName(i) for i in range(sym.GetPointData().GetNumberOfArrays())] # Extract the names of the point data
         print("Arrays on the symmetry plane:", names)
         b = sym.GetBounds() # Get the bounds of the symmetry plane surface
+        # the ground is the bottom of the symmetry plane (NOT necessarily z = 0): rebuild the vertical view window
+        y0, y1 = b[2 * IV], y_bottom + WINDOW_TOP_H * H
+        cy, half_h = 0.5 * (y0 + y1), 0.5 * (y1 - y0)
+        scale_v = max(half_h, half_w * IMG_H / IMG_W)   # half-height actually shown (the window is wider than tall)
+        cy, half_h = y0 + scale_v, scale_v               # anchor the bottom edge of the image on the ground
+        print(f"Ground at {y0:.4f} (clearance {y_bottom - y0:.4f} m)")
         z_plane = 0.5 * (b[2 * IS] + b[2 * IS + 1]) # Calculate the z-coordinate of the symmetry plane
         if b[2 * IS + 1] - b[2 * IS] > 1e-6 * max(1.0, H):
             print("WARNING: symmetryPlane.vtk is not normal to the spanwise axis: check the cuttingPlane in postProcessing")
@@ -328,40 +335,77 @@ def main():
         else:
             print("WARNING: field 'p' not found, pressure_field.png skipped")
 
-        # 4. Streamlines, seeded on a vertical line upstream of the body
+        # 4. Streamlines, evenly spaced in space: candidate seeds on a regular grid; a streamline is traced from a
+        #    candidate only if the candidate is farther than STREAM_SPACING from every streamline traced so far
+        STREAM_SPACING_H = 0.07      # NEW: target distance between neighbouring streamlines, in model heights (bigger = fewer lines)
         u_vec = vtk_to_numpy(sym.GetPointData().GetArray(vel)).copy() # Get the velocity vector array from the symmetry plane surface and convert it to a numpy array
         u_vec[:, IS] = 0.0                            # keep the integration in the plane
         u_plane = numpy_to_vtk(u_vec, deep=True) # Convert the numpy array back to a VTK array, DEEP COPY, so that the original array is not modified
         u_plane.SetName("U_inplane") # Set the name of the new VTK array to "U_inplane"
         sym.GetPointData().AddArray(u_plane) # Add the new VTK array to the point data of the symmetry plane surface
 
-        x_seed = max(b[2 * IX] + 1e-3, x_nose - 0.4 * H)      # upstream of the nose
-        p1, p2 = [0.0] * 3, [0.0] * 3 # Create two points for the seed line (the seed line is a vertical line upstream of the body)
-        p1[IX] = p2[IX] = x_seed # Set the x-coordinate of the seed line to the upstream position
-        p1[IS] = p2[IS] = z_plane # Set the z-coordinate of the seed line to the symmetry plane
-        p1[IV] = b[2 * IV] + 0.001 # Set the y-coordinate of the seed line to the bottom of the symmetry plane (the seed line is a vertical line that spans the entire height of the symmetry plane)
         visible_top = cy + max(half_h, half_w * IMG_H / IMG_W)   # top edge of the rendered image
-        p2[IV] = min(b[2 * IV + 1], visible_top) * 0.98 # Set the y-coordinate of the top point of the seed line to the minimum of the top of the symmetry plane and the top edge of the rendered image 
-        seed = vtk.vtkLineSource() # Create a line source for the seed line
-        seed.SetPoint1(*p1) # Set the first point of the seed line
-        seed.SetPoint2(*p2) # Set the second point of the seed line
-        seed.SetResolution(80) # Set the resolution of the seed line (the number of points along the line)
+        v_min = b[2 * IV] + 0.001 # Lowest seed height: the bottom of the symmetry plane
+        v_max = min(b[2 * IV + 1], visible_top) * 0.98 # Highest seed height: the minimum of the top of the symmetry plane and the top edge of the rendered image
+        spacing = STREAM_SPACING_H * H # NEW: spacing in metres
+        cand_x = np.arange(max(b[2 * IX] + 1e-3, x0), x1, spacing) # NEW: candidate seed positions, streamwise (whole view window, from upstream of the nose)
+        cand_v = np.arange(v_min, v_max, spacing) # NEW: candidate seed positions, vertical
+        candidates = [(x, v) for x in cand_x for v in cand_v] # NEW: ordered from upstream to downstream, so the free stream is seeded first
 
-        streamer = vtk.vtkStreamTracer() # Create a stream tracer to generate streamlines from the seed line (this is the exact same filter Paraview employs)
+        streamer = vtk.vtkStreamTracer() # Create a stream tracer to generate streamlines from the seeds (this is the exact same filter Paraview employs)
         streamer.SetInputData(sym) # Set the input data for the stream tracer to the symmetry plane surface
-        streamer.SetSourceConnection(seed.GetOutputPort()) # Set the source of the stream tracer to the seed line
         streamer.SetInputArrayToProcess(0, 0, 0, vtk.vtkDataObject.FIELD_ASSOCIATION_POINTS, "U_inplane") # Array to integrate (the stream tracer will integrate the velocity field along the seed line)
-        streamer.SetIntegrationDirectionToBoth() # Integrate in both directions (upstream and downstream) from the seed line
+        streamer.SetIntegrationDirectionToBoth() # Integrate in both directions (upstream and downstream) from the seed
         streamer.SetIntegratorTypeToRungeKutta45() # Use the Runge-Kutta 4-5 integrator
         streamer.SetMaximumPropagation(10.0 * (b[1] - b[0])) # Set the maximum propagation distance for the streamlines (the streamlines will be integrated for a maximum distance of 10 times the width of the symmetry plane)
-        streamer.SetMaximumNumberOfSteps(50000) # Set the maximum number of steps for the integrator (the integrator will take a maximum of 50000 steps to integrate the streamlines)
-        streamer.Update() # Update the stream tracer to generate the streamlines
-        print("  streamlines generated:", streamer.GetOutput().GetNumberOfLines())
+        streamer.SetMaximumNumberOfSteps(20000) # CHANGED (was 50000): lines spiralling into a focus never end, so keep the cap per line moderate
+
+        traced = vtk.vtkAppendPolyData() # NEW: collects the accepted streamlines
+        line_pts = np.empty((0, 2)) # NEW: in-plane (x, vertical) points of all accepted streamlines, used for the distance test
+        tree = None # NEW: KD-tree of line_pts
+        n_lines = 0 # NEW
+        for (cx_s, cv_s) in candidates: # NEW: loop over the candidate seeds
+            if tree is not None and tree.query([cx_s, cv_s])[0] < 0.9 * spacing: # NEW: too close to an existing streamline
+                continue
+            seed_xyz = [0.0] * 3 # NEW: 3-D position of the seed point
+            seed_xyz[IX], seed_xyz[IV], seed_xyz[IS] = cx_s, cv_s, z_plane # NEW
+            seed_pts = vtk.vtkPoints() # NEW: one-point seed source
+            seed_pts.InsertNextPoint(*seed_xyz) # NEW
+            seed_pd = vtk.vtkPolyData() # NEW
+            seed_pd.SetPoints(seed_pts) # NEW
+            seed_cells = vtk.vtkCellArray() # NEW
+            seed_cells.InsertNextCell(1) # NEW
+            seed_cells.InsertCellPoint(0) # NEW
+            seed_pd.SetVerts(seed_cells) # NEW
+            streamer.SetSourceData(seed_pd) # NEW: trace from this seed only
+            streamer.Update() # Update the stream tracer to generate the streamline
+            line = vtk.vtkPolyData() # NEW
+            line.DeepCopy(streamer.GetOutput()) # NEW: copy, because the filter output is overwritten at the next seed
+            if line.GetNumberOfPoints() < 2: # NEW: seed outside the mesh (e.g. inside the body) or stagnant
+                continue
+            traced.AddInputData(line) # NEW
+            n_lines += 1 # NEW
+            xyz = vtk_to_numpy(line.GetPoints().GetData()) # NEW: points of the new line
+            new_pts = [] # NEW: densify the polyline so that the distance test has no gaps between points
+            for ic in range(line.GetNumberOfCells()): # NEW
+                ids = line.GetCell(ic).GetPointIds() # NEW
+                seg = np.array([[xyz[ids.GetId(k), IX], xyz[ids.GetId(k), IV]] for k in range(ids.GetNumberOfIds())]) # NEW
+                if len(seg) < 2: # NEW
+                    continue
+                for p, q in zip(seg[:-1], seg[1:]): # NEW
+                    n_sub = max(1, int(np.ceil(np.hypot(*(q - p)) / (0.3 * spacing)))) # NEW: sub-points at <= 0.3 spacing
+                    new_pts.extend(p + (q - p) * t for t in np.linspace(0.0, 1.0, n_sub, endpoint=False)) # NEW
+                new_pts.append(seg[-1]) # NEW
+            if new_pts: # NEW
+                line_pts = np.vstack([line_pts, np.array(new_pts)]) # NEW
+                tree = cKDTree(line_pts) # NEW: rebuild the tree with the new line
+        traced.Update() # NEW
+        print("  streamlines generated:", n_lines)
 
         tubes = vtk.vtkTubeFilter() # Create a tube filter to convert the streamlines into tubes (this makes the streamlines more visible in the rendered image)
-        tubes.SetInputConnection(streamer.GetOutputPort())
-        tubes.SetRadius(0.01 * H)
-        tubes.SetNumberOfSides(8)
+        tubes.SetInputConnection(traced.GetOutputPort()) # CHANGED: the accepted streamlines instead of a single tracer output
+        tubes.SetRadius(0.01 * H) # Set the radius of the tubes to 1% of the height of the Ahmed body
+        tubes.SetNumberOfSides(8) # Set the number of sides for the tubes (the tubes will be octagonal)
         tubes.Update()
         st_mapper = vtk.vtkPolyDataMapper()
         st_mapper.SetInputConnection(tubes.GetOutputPort())
@@ -370,44 +414,53 @@ def main():
         st_actor.SetMapper(st_mapper)
         shoot(renderer, ren_win, [grey_actor(sym, GREY), st_actor], "streamlines.png")
 
-        # 5. Velocity vectors: crop to the view window, subsample, constant length
-        box = vtk.vtkBox()
-        lo, hi = [0.0] * 3, [0.0] * 3
-        lo[IX], hi[IX] = x0, x1
-        lo[IV], hi[IV] = y0, y1
-        lo[IS], hi[IS] = b[2 * IS] - 1.0, b[2 * IS + 1] + 1.0
-        box.SetBounds(lo[0], hi[0], lo[1], hi[1], lo[2], hi[2])
-        extract = vtk.vtkExtractPolyDataGeometry()
-        extract.SetInputData(sym)
-        extract.SetImplicitFunction(box)
-        extract.ExtractInsideOn()
-        extract.ExtractBoundaryCellsOn()
-        extract.Update()
-        n_pts = max(extract.GetOutput().GetNumberOfPoints(), 1)
+        # 5. Velocity vectors: arrows on a REGULAR grid (uniform in space, independent of the mesh density),
+        #    velocity interpolated from the symmetry plane, constant length
+        GLYPH_SPACING_H = 0.12       # NEW: distance between arrows, in model heights (bigger = fewer arrows)
+        spacing_g = GLYPH_SPACING_H * H # NEW: spacing in metres
+        gx = np.arange(x0 + 0.5 * spacing_g, x1, spacing_g) # NEW: grid positions, streamwise (whole view window)
+        v_ground = b[2 * IV] + 0.001         # bottom of the symmetry plane (the real ground), not z = 0
+        gv = np.arange(v_ground + 0.5 * spacing_g, min(b[2 * IV + 1], visible_top) * 0.98, spacing_g) # grid positions, vertical (from the ground to the top of the image)
+        GX, GV = np.meshgrid(gx, gv) # NEW
+        grid_xyz = np.zeros((GX.size, 3)) # NEW: 3-D coordinates of the grid points
+        grid_xyz[:, IX] = GX.ravel() # NEW
+        grid_xyz[:, IV] = GV.ravel() # NEW
+        grid_xyz[:, IS] = z_plane # NEW: on the symmetry plane
+        grid_pts = vtk.vtkPoints() # NEW
+        grid_pts.SetData(numpy_to_vtk(grid_xyz, deep=True)) # NEW
+        grid_pd = vtk.vtkPolyData() # NEW
+        grid_pd.SetPoints(grid_pts) # NEW
+        grid_vertices = vtk.vtkVertexGlyphFilter() # NEW: turns the points into vertex cells
+        grid_vertices.SetInputData(grid_pd) # NEW
+        grid_vertices.Update() # NEW
 
-        mask = vtk.vtkMaskPoints()
-        mask.SetInputConnection(extract.GetOutputPort())
-        mask.SetOnRatio(max(1, n_pts // TARGET_GLYPHS))
-        mask.RandomModeOff()
-        mask.GenerateVerticesOn()
-        mask.SingleVertexPerCellOn()
+        probe = vtk.vtkProbeFilter() # NEW: interpolates the fields of the symmetry plane onto the grid points
+        probe.SetInputConnection(grid_vertices.GetOutputPort()) # NEW: where to sample
+        probe.SetSourceData(sym) # NEW: what to sample
+        probe.Update() # NEW
+
+        inside = vtk.vtkThresholdPoints() # NEW: keep only the grid points that fall on the mesh (not in the body hole)
+        inside.SetInputConnection(probe.GetOutputPort()) # NEW
+        inside.SetInputArrayToProcess(0, 0, 0, vtk.vtkDataObject.FIELD_ASSOCIATION_POINTS, "vtkValidPointMask") # NEW
+        inside.ThresholdByUpper(0.5) # NEW: mask is 1 for valid points
+        inside.Update() # NEW
+        print("  velocity arrows:", inside.GetOutput().GetNumberOfPoints()) # NEW
 
         arrow = vtk.vtkArrowSource()
         glyph = vtk.vtkGlyph3D()
         glyph.SetSourceConnection(arrow.GetOutputPort())
-        glyph.SetInputConnection(mask.GetOutputPort())
+        glyph.SetInputConnection(inside.GetOutputPort()) # CHANGED: the regular grid instead of the masked mesh points
         glyph.SetInputArrayToProcess(1, 0, 0, vtk.vtkDataObject.FIELD_ASSOCIATION_POINTS, "U_inplane")
         glyph.SetVectorModeToUseVector()
         glyph.SetScaleModeToDataScalingOff()
-        glyph.SetScaleFactor(GLYPH_SIZE_H * H)
+        glyph.SetScaleFactor(0.85 * spacing_g) # CHANGED: arrow length slightly below the grid spacing, so arrows never overlap
         glyph.OrientOn()
         glyph.Update()
 
         gl_mapper = vtk.vtkPolyDataMapper()
         gl_mapper.SetInputConnection(glyph.GetOutputPort())
-        # colour each arrow by |U| of its seed point (glyph copies the point scalars)
-        extract_scalars = glyph.GetOutput().GetPointData().GetArray(mag_name)
-        if extract_scalars is not None:
+        # colour each arrow by |U| of its grid point (glyph copies the point scalars)
+        if glyph.GetOutput().GetPointData().GetArray(mag_name) is not None:
             color_by_point_array(gl_mapper, mag_name, u_range)
         else:
             gl_mapper.ScalarVisibilityOff()
@@ -419,25 +472,25 @@ def main():
         #    CellDatatoPointData is already applied in load_surface().
         k_range = array_range(sym, "k")
         if k_range:
-            k_min, k_max = k_range
+            k_min, k_max = k_range # Get the range of the turbulent kinetic energy (TKE) field
             levels = [k_min + (k_max - k_min) * (i / 12.0) for i in range(1, 12)]   # 11 isolines
-            tke_contour = vtk.vtkContourFilter()
-            tke_contour.SetInputData(sym)
-            tke_contour.SetInputArrayToProcess(0, 0, 0, vtk.vtkDataObject.FIELD_ASSOCIATION_POINTS, "k")
-            tke_contour.ComputeScalarsOn()
-            tke_contour.SetNumberOfContours(len(levels))
-            for i, v in enumerate(levels):
-                tke_contour.SetValue(i, v)
+            tke_contour = vtk.vtkContourFilter() # Create a contour filter to generate contours of the TKE field
+            tke_contour.SetInputData(sym) # Set the input data for the contour filter to the symmetry plane surface
+            tke_contour.SetInputArrayToProcess(0, 0, 0, vtk.vtkDataObject.FIELD_ASSOCIATION_POINTS, "k") # Set the input array to process for the contour filter to the TKE field
+            tke_contour.ComputeScalarsOn() # Enable scalar computation for the contour filter (this will compute the scalar values at the contour lines)
+            tke_contour.SetNumberOfContours(len(levels)) # Set the number of contours to generate for the contour filter (this will generate 11 contour lines)
+            for i, v in enumerate(levels): 
+                tke_contour.SetValue(i, v) # Set the value of each contour line to the corresponding level (this will generate contour lines at the specified levels)
             tke_contour.Update()
 
-            tke_mapper = vtk.vtkPolyDataMapper()
-            tke_mapper.SetInputConnection(tke_contour.GetOutputPort())
-            color_by_point_array(tke_mapper, "k", (k_min, k_max))
-            tke_actor = vtk.vtkActor()
-            tke_actor.SetMapper(tke_mapper)
-            tke_actor.GetProperty().SetLineWidth(TKE_LINE_WIDTH)
-            tke_actor.GetProperty().LightingOff()
-            shoot(renderer, ren_win, [grey_actor(sym, GREY), tke_actor], "tke.png")
+            tke_mapper = vtk.vtkPolyDataMapper() # Create a mapper for the contour lines
+            tke_mapper.SetInputConnection(tke_contour.GetOutputPort()) # Set the input connection for the mapper to the output port of the contour filter (this will map the contour lines to graphical primitives)
+            color_by_point_array(tke_mapper, "k", (k_min, k_max)) # Colour the contour lines by the TKE field using the Turbo colour map
+            tke_actor = vtk.vtkActor() # Create an actor to represent the contour lines
+            tke_actor.SetMapper(tke_mapper) # Set the mapper for the actor to the contour lines
+            tke_actor.GetProperty().SetLineWidth(TKE_LINE_WIDTH) # Set the line width of the contour lines
+            tke_actor.GetProperty().LightingOff() # Disable lighting for the contour lines (this will make the contour lines appear flat and not affected by lighting)
+            shoot(renderer, ren_win, [grey_actor(sym, GREY), tke_actor], "tke.png") # Save
         else:
             print("WARNING: field 'k' not found, tke.png skipped")
     else:
