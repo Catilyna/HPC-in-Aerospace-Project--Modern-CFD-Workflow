@@ -21,7 +21,7 @@ fieldAverage1
     type            fieldAverage;
     libs            ("libfieldFunctionObjects.so");
     writeControl    writeTime;
-    timeStart       1.0; // Adjust based on when flow reaches statistical stationarity
+    timeStart       75.0; // Adjust based on when flow reaches statistical stationarity
     fields
     (
         U
@@ -36,6 +36,40 @@ fieldAverage1
             base        time;
         }
     );
+}
+
+// Global aerodynamic coefficients.  Cd is the total drag coefficient and Cf
+// in the report is the viscous (skin-friction) contribution to drag:
+// Cf = -2 Fviscous,x / (rhoInf UInf^2 Aref).
+forceCoeffs
+{
+    type            forceCoeffs;
+    libs            ("libforces.so");
+    writeControl    timeStep;
+    writeInterval   1;
+    patches         (body legs);
+    rho             rhoInf;
+    rhoInf          1;
+    CofR            (0 0 0);
+    liftDir         (0 0 1);
+    dragDir         (1 0 0);
+    pitchAxis       (0 1 0);
+    magUInf         30;
+    lRef            0.288;
+    Aref            0.0835;
+}
+
+// The viscous force is needed because forceCoeffs does not provide a global Cf.
+forces
+{
+    type            forces;
+    libs            ("libforces.so");
+    writeControl    timeStep;
+    writeInterval   1;
+    patches         (body legs);
+    rho             rhoInf;
+    rhoInf          1;
+    CofR            (0 0 0);
 }
 
 // High-frequency probes for spectral analysis (paper Fig. 13).
