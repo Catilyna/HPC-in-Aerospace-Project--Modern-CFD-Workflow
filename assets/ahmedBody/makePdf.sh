@@ -8,7 +8,7 @@ mkdir -p report/images
 printf '\n'
 
 echo "------------------------------------"
-printf '%s\n' "Creating ParaView field" "visualisations"
+printf '%s\n' "Creating VTK field" "visualisations"
 echo "------------------------------------"
 touch case.foam
 pvpython pythonScripts/generateImages.py
