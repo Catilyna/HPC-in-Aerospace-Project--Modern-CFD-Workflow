@@ -11,7 +11,7 @@ echo "------------------------------------"
 printf '%s\n' "Creating VTK field" "visualisations"
 echo "------------------------------------"
 touch case.foam
-pvpython pythonScripts/generateImages.py
+python3 pythonScripts/generateImages.py
 printf '\n'
 
 echo "------------------------------------"
