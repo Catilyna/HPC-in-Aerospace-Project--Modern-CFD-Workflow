@@ -175,6 +175,13 @@ entries that are included in `system/snappyHexMeshDict`:
 The generated file contains `nSurfaceLayers`, `expansionRatio`,
 `firstLayerThickness`, and `totalLayerThickness`.
 
+Before mesh generation, `Allrun.pre` compares the generated total layer
+thickness with `addLayersControls/minThickness` in
+`system/snappyHexMeshDict`. If the requested total is smaller, preprocessing
+stops with an error instead of silently generating a mesh without the requested
+wall layers. Resolve the mismatch by increasing the requested layer thickness
+or lowering `minThickness`.
+
 `maxCells` is a hard upper limit for the generated mesh. Before meshing, the
 workflow estimates the final count from the generated domain volume, refinement
 box volume, STL surface area, refinement levels, transition width, and prism
