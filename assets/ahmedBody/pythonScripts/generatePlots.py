@@ -15,13 +15,13 @@ on the flow characteristics of Ahmed body", Exp. Therm. Fluid Sci. 57 (2014)
     fig12_vorticity_instant    Fig. 12  instantaneous vorticity, 3 times
     velocity_psd               Fig. 13  probe map + spectra of u and v
     velocity_profiles          (extra)  line-sampled profiles from 'sets'
-    force_coefficients         (extra) drag and viscous-drag histories
 
 Run AFTER the OpenFOAM post-processing (wakePlanes, bodySurfaces, probes1,
-velocityProfiles, forces).  Tables strouhal.tex, critical_points.tex and
-force_coefficients.tex are written to report/ and are \\input by report.tex.
+velocityProfiles).  Tables strouhal.tex and critical_points.tex are written to
+report/ and are \\input by report.tex.
 """
 import csv
+import os
 import re
 import sys
 import traceback
@@ -64,7 +64,7 @@ Y_BOTTOM = None     # y of the underside of the body (y/H = 0)
 U_INF = None        # free-stream speed [m/s]
 FALLBACK = dict(H=0.288, X_REAR=1.044, Y_BOTTOM=0.05, U_INF=1.0)  # standard Ahmed
 
-STATS_START_TIME = 75.0      # discard probe data before this time (= fieldAverage timeStart) TODO: Automate this number decision (when is stationary state reached?).
+STATS_START_TIME = 1.0      # discard probe data before this time (= fieldAverage timeStart)
 PSD_SEGMENT = 1024          # Welch segment length [samples]
 
 XLIM = (-0.7, 1.5)          # x/H window of the symmetry-plane figures
@@ -73,9 +73,9 @@ WAKE_STEP = 0.139           # spacing of the profiles in the wake   [x/H]  (pape
 WAKE_MAX = 1.45             # last wake profile [x/H]
 PROFILE_SCALE_U = 0.07      # x/H length of 1 unit of <u>/U in the profile plots
 PROFILE_SCALE_V = 0.21      # x/H length of 1 unit of <v>/U in the profile plots
-BLUE = "#2b2bff"            # body colour used by the paper
-RHO_INF = 1.0               # must match system/postProcessing (incompressible)
-A_REF = 0.0835              # frontal reference area [m2], must match Aref
+SLANT_START = None          # x/H of the slant start (e.g. -0.77); None = detect it from body.vtk
+FIX_OUTLIERS = True         # replace corrupted velocity nodes by neighbour averages (set False to only report them)
+BLUE = "#2b2bff"          # body colour used by the paper
 
 plt.rcParams.update({
     "font.size": 9,
@@ -174,7 +174,82 @@ def read_surface(path: Path) -> Surface:
         name = pdata.GetArrayName(i)
         if name:
             data[name] = vtk_to_numpy(pdata.GetArray(i)).astype(float)
+    # drop degenerate (zero-area) triangles: matplotlib's interpolators return garbage inside them
+    corners = points[tri]
+    area = 0.5 * np.linalg.norm(np.cross(corners[:, 1] - corners[:, 0], corners[:, 2] - corners[:, 0]), axis=1)
+    keep = area > 1e-9 * np.median(area)
+    if not keep.all():
+        print(f"  {path.name}: removed {int((~keep).sum())} degenerate triangles")
+        tri = tri[keep]
     return Surface(points, tri, data)
+
+
+def estimate_u_inf(surf: Surface, case) -> float:
+    """Free-stream speed from the data: median |U| far upstream of the body and well above it."""
+    name = "UMean" if surf.has("UMean") else "U"
+    x, v = surf.points[:, IX], surf.points[:, IV]
+    x_nose = case.x_rear - 3.6 * case.H
+    sel = (x < x_nose - 0.3 * case.H) & (v > case.y_bottom + 1.5 * case.H)
+    if sel.sum() < 10:
+        sel = x < x_nose - 0.3 * case.H
+    return float(np.median(np.linalg.norm(surf.data[name][sel], axis=1)))
+
+
+OUTLIER_FACTOR = 4.0        # a nodal |U| above this many U_inf (or NaN/inf) is treated as corrupted data
+
+
+def check_velocity(surf: Surface, case, fix=True):
+    """Print statistics of |U|/U_inf on a surface and repair isolated corrupted nodes.
+
+    One node with a huge value contaminates every triangle that contains it; in the far field the
+    triangles are very large, so the linear interpolation used by the quiver and profile plots
+    produces fans of enormous arrows and long horizontal spikes.  Bad nodes are replaced by the
+    average of their good neighbours.
+    """
+    for name in ("UMean", "U"):
+        if not surf.has(name):
+            continue
+        u = surf.data[name]
+        ratio = np.linalg.norm(u, axis=1) / case.u_inf
+        finite = np.isfinite(ratio)
+        bad = ~finite | (ratio > OUTLIER_FACTOR)
+        pct = np.percentile(ratio[finite], [50, 99, 99.9]) if finite.any() else [np.nan] * 3
+        print(f"  |{name}|/U on the symmetry plane: median {pct[0]:.3g}, 99% {pct[1]:.3g}, "
+              f"99.9% {pct[2]:.3g}, max {np.nanmax(ratio[finite]) if finite.any() else np.nan:.3g}; "
+              f"nodes above {OUTLIER_FACTOR:g}U or non-finite: {int(bad.sum())} of {len(ratio)}")
+        if not bad.any():
+            continue
+        for i in np.flatnonzero(bad)[np.argsort(-np.nan_to_num(ratio[bad], nan=np.inf, posinf=np.inf))][:5]:
+            print(f"    worst node: x/H = {(surf.points[i, IX] - case.x_rear) / case.H:.3f}, "
+                  f"y/H = {(surf.points[i, IV] - case.y_bottom) / case.H:.3f}, |{name}|/U = {ratio[i]:.3g}")
+        warn(f"{int(bad.sum())} corrupted nodes in {name}: check fieldAverage / the sampled field; "
+             f"{'they are replaced by neighbour averages' if fix else 'left untouched'}")
+        if bad.mean() > 0.05:
+            warn(f"{100 * bad.mean():.0f}% of the nodes are flagged: this is a wrong U_inf, not isolated bad "
+                 f"nodes. Nothing is repaired; set U_INF at the top of the script.")
+            continue
+        if not fix:
+            continue
+        good = ~bad
+        vals = np.where(good[:, None], u, 0.0)
+        for _ in range(200):
+            if good.all():
+                break
+            s = np.zeros_like(vals)
+            c = np.zeros(len(vals))
+            for a, b in ((0, 1), (1, 2), (2, 0)):
+                i, j = surf.tri[:, a], surf.tri[:, b]
+                for p, q in ((i, j), (j, i)):
+                    m = good[q] & ~good[p]
+                    np.add.at(s, p[m], vals[q[m]])
+                    np.add.at(c, p[m], 1.0)
+            new = ~good & (c > 0)
+            if not new.any():
+                break
+            vals[new] = s[new] / c[new][:, None]
+            good = good | new
+        vals[~good] = np.median(vals[good], axis=0)
+        surf.data[name] = vals
 
 
 # ----------------------------------------------------------------------------
@@ -184,14 +259,71 @@ class Case:
     pass
 
 
+def _expand_openfoam_includes(path: Path, seen=None) -> str:
+    """Return a dictionary with local ``#include`` files expanded."""
+    seen = set() if seen is None else seen
+    path = path.resolve()
+    if path in seen or not path.is_file():
+        return ""
+    seen.add(path)
+
+    text = path.read_text(errors="ignore")
+    include_pattern = re.compile(r'^\s*#include\s+"([^"]+)"\s*$', re.MULTILINE)
+
+    def expand(match):
+        include_name = match.group(1)
+        include_name = include_name.replace("${FOAM_CASE}", str(CASE_DIR))
+        include_name = include_name.replace("$FOAM_CASE", str(CASE_DIR))
+        include_name = os.path.expandvars(include_name)
+        include_path = Path(include_name)
+        if not include_path.is_absolute():
+            include_path = path.parent / include_path
+        return _expand_openfoam_includes(include_path, seen)
+
+    return include_pattern.sub(expand, text)
+
+
+def _resolve_openfoam_scalar(token: str, definitions: dict[str, str]) -> str:
+    """Resolve a scalar token and its OpenFOAM ``$variable`` references."""
+    for _ in range(len(definitions) + 1):
+        match = re.fullmatch(r"\$\{?([A-Za-z_][A-Za-z0-9_]*)\}?", token)
+        if not match:
+            return token
+        value = definitions.get(match.group(1))
+        if value is None:
+            return token
+        token = value
+    return token
+
+
 def detect_u_inf():
-    for rel in ("0/U", "0.orig/U"):
-        f = CASE_DIR / rel
+    candidates = [CASE_DIR / rel for rel in ("0/U", "0.orig/U")]
+    for pattern in ("0*/U*", "0*/*U.orig*", "0*/*U.origin*"):          # e.g. 0/U.origin, 0.orig/U
+        candidates += sorted(p for p in CASE_DIR.glob(pattern) if p.is_file())
+    seen = set()
+    for f in candidates:
+        if f in seen:
+            continue
+        seen.add(f)
         if f.exists():
-            text = f.read_text(errors="ignore")
+            text = _expand_openfoam_includes(f)
             number = r"([-+]?\d*\.?\d+(?:[eE][-+]?\d+)?)"
-            for m in re.finditer(r"uniform\s*\(\s*" + number + r"\s+" + number + r"\s+" + number + r"\s*\)", text):
-                v = np.array([float(g) for g in m.groups()])
+            definitions = {
+                name: value
+                for name, value in re.findall(
+                    r"\b([A-Za-z_][A-Za-z0-9_]*)\s+([-+]?\d*\.?\d+(?:[eE][-+]?\d+)?)\s*;",
+                    text,
+                )
+            }
+            scalar = r"(?:[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?|\$[A-Za-z_][A-Za-z0-9_]*|\$\{[A-Za-z_][A-Za-z0-9_]*\})"
+            for m in re.finditer(
+                r"uniform\s*\(\s*(" + scalar + r")\s+(" + scalar + r")\s+(" + scalar + r")\s*\)",
+                text,
+            ):
+                values = [_resolve_openfoam_scalar(token, definitions) for token in m.groups()]
+                if not all(re.fullmatch(number, value) for value in values):
+                    continue
+                v = np.array([float(value) for value in values])
                 if np.linalg.norm(v) > 0:
                     return float(np.linalg.norm(v))
     return None
@@ -213,7 +345,7 @@ def detect_case() -> Case:
         height = y_max - y_min
         x_rear = points[:, IX].max()
         y_bottom = y_min
-        flat_roof = points[points[:, IV] >= y_max - 1e-3 * height, IX]
+        flat_roof = points[points[:, IV] >= y_max - 1e-2 * height, IX]
         x_slant = flat_roof.max()
         case.body_z = (points[:, IS].min(), points[:, IS].max())      # spanwise extent of the body
         case.span_center = 0.5 * (case.body_z[0] + case.body_z[1])    # symmetry-plane position
@@ -227,8 +359,9 @@ def detect_case() -> Case:
     case.y_bottom = Y_BOTTOM if Y_BOTTOM is not None else y_bottom
     if case.ground is None:
         case.ground = case.y_bottom - 0.17 * case.H      # fallback: standard ground clearance
-    case.slant_start = (x_slant - case.x_rear) / case.H          # x/H of the slant leading edge (<0)
+    case.slant_start = SLANT_START if SLANT_START is not None else (x_slant - case.x_rear) / case.H   # x/H of the slant leading edge (<0)
     u_inf = U_INF or detect_u_inf()
+    case.u_inf_found = u_inf is not None
     if u_inf is None:
         warn(f"free-stream speed not found in 0/U: assuming U = {FALLBACK['U_INF']} m/s (set U_INF)")
         u_inf = FALLBACK["U_INF"]
@@ -390,60 +523,6 @@ def save(fig, name: str) -> None:
 
 
 # ----------------------------------------------------------------------------
-# Aerodynamic coefficients
-# ----------------------------------------------------------------------------
-def read_force_history(path: Path):
-    """Read OpenFOAM forces.dat and return time, total Fx and viscous Fx."""
-    number = re.compile(r"[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?")
-    rows = []
-    for line in path.read_text(errors="replace").splitlines():
-        if not line.strip() or line.lstrip().startswith("#"):
-            continue
-        values = [float(value) for value in number.findall(line)]
-        # time, pressure force (3), viscous force (3), then moments/other terms
-        if len(values) >= 7:
-            rows.append((values[0], values[1] + values[4], values[4]))
-    if not rows:
-        raise ValueError(f"no force samples found in {path}")
-    return np.asarray(rows)
-
-
-def plot_force_coefficients(case):
-    force_dirs = time_dirs(POST_DIR / "forces")
-    path = force_dirs[-1][1] / "forces.dat" if force_dirs else None
-    if path is None or not path.exists():
-        raise FileNotFoundError("postProcessing/forces/<time>/forces.dat not found")
-
-    history = read_force_history(path)
-    time = history[:, 0]
-    scale = -2.0 / (RHO_INF * case.u_inf**2 * A_REF)
-    cd = scale * history[:, 1]
-    cf = scale * history[:, 2]
-    mask = time >= STATS_START_TIME
-    if mask.sum() < 2:
-        warn(f"fewer than two force samples after t = {STATS_START_TIME}: using all samples")
-        mask = np.ones_like(time, dtype=bool)
-
-    fig, ax = plt.subplots(figsize=(7.0, 3.8))
-    ax.plot(time, cd, label=r"$C_D$", lw=0.9)
-    ax.plot(time, cf, label=r"$C_F$", lw=0.9)
-    ax.set_xlabel("Iteration")
-    ax.set_ylabel("coefficient")
-    ax.grid(True, lw=0.3)
-    ax.legend()
-    save(fig, "force_coefficients")
-
-    rows = []
-    for name, values in (("$C_D$", cd[mask]), ("$C_F$", cf[mask])):
-        rows.append(f"{name} & {values.mean():.5f} & {values.std(ddof=1):.5f} & {len(values)} \\\\\n")
-    (REPORT_DIR / "force_coefficients.tex").write_text(
-        "\\begin{tabular}{lrrr}\n"
-        "\\hline\nCoefficient & Mean & Standard deviation & Samples \\\\\n"
-        "\\hline\n" + "".join(rows) +
-        "\\hline\n\\end{tabular}\n")
-
-
-# ----------------------------------------------------------------------------
 # Critical points (Figs 4 and 5)
 # ----------------------------------------------------------------------------
 def find_critical_points(triang, u, v, case: Case):
@@ -596,12 +675,11 @@ def fig_velocity_vectors(sym, case):
     u = sym.data[vel][:, IX] / case.u_inf
     v = sym.data[vel][:, IV] / case.u_inf
     ylim = default_ylim(case)
-    vector_nx = 30
-    _, _, Xq, Yq, (uq, vq) = grid_sample(triang, [u, v], XLIM, ylim, nx=vector_nx)
-    _, _, Xf, Yf, (uf,) = grid_sample(triang, [u], XLIM, ylim, nx=70)
+    _, _, Xq, Yq, (uq, vq) = grid_sample(triang, [u, v], XLIM, ylim, nx=85)
+    _, _, Xf, Yf, (uf,) = grid_sample(triang, [u], XLIM, ylim, nx=700)
     fig, ax = plt.subplots(figsize=(7, 3.6))
-    spacing = (XLIM[1] - XLIM[0]) / vector_nx
-    ax.quiver(Xq, Yq, uq, vq, angles="xy", scale_units="xy", scale=2.9 / spacing,
+    spacing = (XLIM[1] - XLIM[0]) / 85
+    ax.quiver(Xq, Yq, uq, vq, angles="xy", scale_units="xy", scale=1.0 / (1.2 * spacing),
               pivot="tail", width=0.0016, headwidth=3.5, headlength=4, color="k")
     if np.ma.min(uf) < 0 < np.ma.max(uf):
         ax.contour(Xf, Yf, uf, levels=[0.0], colors="k", linewidths=1.8, zorder=4)
@@ -886,6 +964,10 @@ def main() -> int:
         case.ground = float(sym.points[:, IV].min())      # the ground is the bottom of the symmetry plane
         print(f"Ground at {case.ground:.4f} (clearance {case.y_bottom - case.ground:.4f} m); "
               f"arrays on the symmetry plane:", sorted(sym.data))
+        if not case.u_inf_found:
+            case.u_inf = estimate_u_inf(sym, case)
+            warn(f"U estimated from the upstream data: {case.u_inf:.4g} m/s (set U_INF to override)")
+        check_velocity(sym, case, fix=FIX_OUTLIERS)
     else:
         warn("postProcessing/wakePlanes/<time>/symmetryPlane.vtk not found")
 
@@ -916,7 +998,6 @@ def main() -> int:
     run("Fig. 12 instantaneous vorticity", fig_instantaneous_vorticity, case, needs_sym=False)
     run("Fig. 13 probes and spectra", fig_spectra, case, sym)
     run("extra: line-sampled profiles", plot_line_profiles, case, needs_sym=False)
-    run("extra: force coefficients", plot_force_coefficients, case, needs_sym=False)
 
     if failures:
         print("\nNot generated:", ", ".join(failures))
