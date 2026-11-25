@@ -15,10 +15,11 @@ on the flow characteristics of Ahmed body", Exp. Therm. Fluid Sci. 57 (2014)
     fig12_vorticity_instant    Fig. 12  instantaneous vorticity, 3 times
     velocity_psd               Fig. 13  probe map + spectra of u and v
     velocity_profiles          (extra)  line-sampled profiles from 'sets'
+    force_coefficients         (extra)  drag and viscous-drag histories
 
 Run AFTER the OpenFOAM post-processing (wakePlanes, bodySurfaces, probes1,
-velocityProfiles).  Tables strouhal.tex and critical_points.tex are written to
-report/ and are \\input by report.tex.
+velocityProfiles, forces).  Tables strouhal.tex, critical_points.tex and
+force_coefficients.tex are written to report/ and are \\input by report.tex.
 """
 import csv
 import os
@@ -76,6 +77,8 @@ PROFILE_SCALE_V = 0.21      # x/H length of 1 unit of <v>/U in the profile plots
 SLANT_START = None          # x/H of the slant start (e.g. -0.77); None = detect it from body.vtk
 FIX_OUTLIERS = True         # replace corrupted velocity nodes by neighbour averages (set False to only report them)
 BLUE = "#2b2bff"          # body colour used by the paper
+RHO_INF = 1.0               # must match system/postProcessing (incompressible)
+A_REF = 0.0835              # frontal reference area [m2], must match Aref
 
 plt.rcParams.update({
     "font.size": 9,
@@ -520,6 +523,60 @@ def save(fig, name: str) -> None:
     fig.savefig(IMAGE_DIR / f"{name}.png", dpi=300, bbox_inches="tight")
     plt.close(fig)
     print(f"  wrote {name}.png")
+
+
+# ----------------------------------------------------------------------------
+# Aerodynamic coefficients
+# ----------------------------------------------------------------------------
+def read_force_history(path: Path):
+    """Read OpenFOAM forces.dat and return time, total Fx and viscous Fx."""
+    number = re.compile(r"[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?")
+    rows = []
+    for line in path.read_text(errors="replace").splitlines():
+        if not line.strip() or line.lstrip().startswith("#"):
+            continue
+        values = [float(value) for value in number.findall(line)]
+        # time, pressure force (3), viscous force (3), then moments/other terms
+        if len(values) >= 7:
+            rows.append((values[0], values[1] + values[4], values[4]))
+    if not rows:
+        raise ValueError(f"no force samples found in {path}")
+    return np.asarray(rows)
+
+
+def plot_force_coefficients(case):
+    force_dirs = time_dirs(POST_DIR / "forces")
+    path = force_dirs[-1][1] / "forces.dat" if force_dirs else None
+    if path is None or not path.exists():
+        raise FileNotFoundError("postProcessing/forces/<time>/forces.dat not found")
+
+    history = read_force_history(path)
+    time = history[:, 0]
+    scale = -2.0 / (RHO_INF * case.u_inf**2 * A_REF)
+    cd = scale * history[:, 1]
+    cf = scale * history[:, 2]
+    mask = time >= STATS_START_TIME
+    if mask.sum() < 2:
+        warn(f"fewer than two force samples after t = {STATS_START_TIME}: using all samples")
+        mask = np.ones_like(time, dtype=bool)
+
+    fig, ax = plt.subplots(figsize=(7.0, 3.8))
+    ax.plot(time, cd, label=r"$C_D$", lw=0.9)
+    ax.plot(time, cf, label=r"$C_F$", lw=0.9)
+    ax.set_xlabel("Iteration")
+    ax.set_ylabel("coefficient")
+    ax.grid(True, lw=0.3)
+    ax.legend()
+    save(fig, "force_coefficients")
+
+    rows = []
+    for name, values in (("$C_D$", cd[mask]), ("$C_F$", cf[mask])):
+        rows.append(f"{name} & {values.mean():.5f} & {values.std(ddof=1):.5f} & {len(values)} \\\\\n")
+    (REPORT_DIR / "force_coefficients.tex").write_text(
+        "\\begin{tabular}{lrrr}\n"
+        "\\hline\nCoefficient & Mean & Standard deviation & Samples \\\\\n"
+        "\\hline\n" + "".join(rows) +
+        "\\hline\n\\end{tabular}\n")
 
 
 # ----------------------------------------------------------------------------
@@ -998,6 +1055,7 @@ def main() -> int:
     run("Fig. 12 instantaneous vorticity", fig_instantaneous_vorticity, case, needs_sym=False)
     run("Fig. 13 probes and spectra", fig_spectra, case, sym)
     run("extra: line-sampled profiles", plot_line_profiles, case, needs_sym=False)
+    run("extra: force coefficients", plot_force_coefficients, case, needs_sym=False)
 
     if failures:
         print("\nNot generated:", ", ".join(failures))
