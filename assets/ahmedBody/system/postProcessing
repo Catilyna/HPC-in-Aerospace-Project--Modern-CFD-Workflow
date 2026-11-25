@@ -1,0 +1,222 @@
+// ---------------------------------------------------------------------------
+// Post-processing function objects, arranged to reproduce the figures of
+// Tunay, Sahin & Ozbolat, Exp. Therm. Fluid Sci. 57 (2014) 165-176.
+//
+// Coordinate convention of THIS case: x streamwise, z VERTICAL, y spanwise,
+// vertical symmetry plane y = 0.17 (body centreline).  The paper's (x, y, z)
+// correspond to this case's (x, z, y).
+//
+// Geometry used to place stations/probes (values measured on this case's body.vtk;
+// recompute the coordinates below if the geometry changes):
+//     H     = 0.2894   model height
+//     xRear = 1.044    x of the rear vertical face (x/H = 0)
+//     zBot  = -0.1453  z of the underside of the body (paper's y/H = 0).  NOTE: the ground is BELOW
+//                      zBot (about -0.19), not at z = 0
+//     x = xRear + (x/H)*H        z = zBot + (paper y/H)*H
+// ---------------------------------------------------------------------------
+
+// Time-averaged fields are written once with the final solution.
+fieldAverage1
+{
+    type            fieldAverage;
+    libs            ("libfieldFunctionObjects.so");
+    writeControl    writeTime;
+    timeStart       75.0; // Adjust based on when flow reaches statistical stationarity
+    fields
+    (
+        U
+        {
+            mean        on;
+            prime2Mean  on;   // -> UPrime2Mean, needed for the TKE (Fig. 11)
+            base        time;
+        }
+        k
+        {
+            mean        on;
+            base        time;
+        }
+    );
+}
+
+// Global aerodynamic coefficients.  Cd is the total drag coefficient and Cf
+// in the report is the viscous (skin-friction) contribution to drag:
+// Cf = -2 Fviscous,x / (rhoInf UInf^2 Aref).
+forceCoeffs
+{
+    type            forceCoeffs;
+    libs            ("libforces.so");
+    writeControl    timeStep;
+    writeInterval   1;
+    patches         (body legs);
+    rho             rhoInf;
+    rhoInf          1;
+    CofR            (0 0 0);
+    liftDir         (0 0 1);
+    dragDir         (1 0 0);
+    pitchAxis       (0 1 0);
+    magUInf         30;
+    lRef            0.288;
+    Aref            0.0835;
+}
+
+// The viscous force is needed because forceCoeffs does not provide a global Cf.
+forces
+{
+    type            forces;
+    libs            ("libforces.so");
+    writeControl    timeStep;
+    writeInterval   1;
+    patches         (body legs);
+    rho             rhoInf;
+    rhoInf          1;
+    CofR            (0 0 0);
+}
+
+// High-frequency probes for spectral analysis (paper Fig. 13).
+// Five points in the upper and lower shear layers behind the body, placed
+// at the (x/H, paper y/H) of the paper's points 1..5 (here: z vertical, y = 0.17):
+//   1 (0.61,-0.030)  2 (0.56, 0.940)  3 (0.97, 0.035)
+//   4 (0.43, 0.800)  5 (0.84,-0.033)
+probes1
+{
+    type            probes;
+    libs            ("libsampling.so");
+    writeControl    timeStep;
+    writeInterval   1;
+    fields          (U);
+
+    probeLocations
+    (
+        ( 1.22053 0.17 -0.15398 )   // 1  lower shear layer
+        ( 1.20606 0.17  0.12674 )   // 2  upper shear layer
+        ( 1.32472 0.17 -0.13517 )   // 3  lower shear layer
+        ( 1.16844 0.17  0.08622 )   // 4  upper shear layer
+        ( 1.28710 0.17 -0.15485 )   // 5  lower shear layer
+    );
+}
+
+// Vertical (z) line sampling in the symmetry plane (y = 0.17) at x/H = 0.139,
+// 0.278 and 0.555 behind the rear face.
+velocityProfiles
+{
+    type            sets;
+    libs            ("libsampling.so");
+    writeControl    writeTime;
+    setFormat       raw;
+    interpolationScheme cellPoint;
+    fields          (U UMean);
+
+    sets
+    (
+        x_H_0_139
+        {
+            type        lineUniform;
+            axis        z;
+            start       (1.08423 0.17 -0.185);
+            end         (1.08423 0.17 0.231);
+            nPoints     200;
+        }
+        x_H_0_278
+        {
+            type        lineUniform;
+            axis        z;
+            start       (1.12445 0.17 -0.185);
+            end         (1.12445 0.17 0.231);
+            nPoints     200;
+        }
+        x_H_0_555
+        {
+            type        lineUniform;
+            axis        z;
+            start       (1.20462 0.17 -0.185);
+            end         (1.20462 0.17 0.231);
+            nPoints     200;
+        }
+    );
+}
+
+// Surface sampling in VTK format: symmetry plane (paper Figs 4-7, 9-13) and
+// the five transverse planes of paper Fig. 8 (x/H = 0.35, 0.70, 1.04, 1.39,
+// 1.74).  The scripts use the LAST time directory for the mean fields and the
+// last three time directories for the instantaneous snapshots (Fig. 12), so
+// the write interval should be ~1.6*H/U between the final write times.
+wakePlanes
+{
+    type            surfaces;
+    libs            ("libsampling.so");
+    writeControl    writeTime;
+    surfaceFormat   vtk;
+    interpolationScheme cellPoint;
+    fields          (U k p UMean kMean UPrime2Mean);
+
+    surfaces
+    (
+        symmetryPlane
+        {
+            type        cuttingPlane;
+            planeType   pointAndNormal;
+            point       (0 0.17 0);
+            normal      (0 1 0);      // y = 0.17 : vertical symmetry plane (body centreline)
+        }
+        transverse_xH035
+        {
+            type        cuttingPlane;
+            planeType   pointAndNormal;
+            point       (1.14529 0 0);
+            normal      (1 0 0);
+        }
+        transverse_xH070
+        {
+            type        cuttingPlane;
+            planeType   pointAndNormal;
+            point       (1.24658 0 0);
+            normal      (1 0 0);
+        }
+        transverse_xH104
+        {
+            type        cuttingPlane;
+            planeType   pointAndNormal;
+            point       (1.34498 0 0);
+            normal      (1 0 0);
+        }
+        transverse_xH139
+        {
+            type        cuttingPlane;
+            planeType   pointAndNormal;
+            point       (1.44627 0 0);
+            normal      (1 0 0);
+        }
+        transverse_xH174
+        {
+            type        cuttingPlane;
+            planeType   pointAndNormal;
+            point       (1.54756 0 0);
+            normal      (1 0 0);
+        }
+    );
+}
+
+// Surface extraction in VTK format for body and leg geometry patches
+bodySurfaces
+{
+    type            surfaces;
+    libs            ("libsampling.so");
+    writeControl    writeTime;
+    surfaceFormat   vtk;
+    interpolationScheme cellPoint;
+    fields          (U p);
+
+    surfaces
+    (
+        body
+        {
+            type        patch;
+            patches     (body);
+        }
+        legs
+        {
+            type        patch;
+            patches     (legs);
+        }
+    );
+}

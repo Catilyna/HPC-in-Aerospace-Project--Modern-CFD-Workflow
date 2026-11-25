@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     | Website:  https://openfoam.org
-   \  /    A nd           | Version:  14
+    \\  /    A nd           | Version:  14
      \\/     M anipulation  |
 \*---------------------------------------------------------------------------*/
 FoamFile
@@ -28,7 +28,8 @@ deltaT          1;
 
 writeControl    timeStep;
 
-writeInterval   20;
+// This is a steady solve; retain only the converged final field.
+writeInterval   200;
 
 purgeWrite      1;
 
@@ -43,6 +44,11 @@ timeFormat      general;
 timePrecision   6;
 
 runTimeModifiable true;
+
+functions
+{
+    #include "postProcessing"
+}
 
 
 // ************************************************************************* //

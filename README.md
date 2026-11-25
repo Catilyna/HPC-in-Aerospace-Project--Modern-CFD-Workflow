@@ -52,6 +52,33 @@ HPC-in-Aerospace-Project--Modern-CFD-Workflow/
 
 This repository is organized around a reusable OpenFOAM-based CFD workflow, with the simulation case under the `assets/ahmedBody` folder and supporting utilities under `utilities/` for preprocessing and geometry analysis.
 
+## Requirements
+
+The workflow requires access to:
+
+- OpenFoam 14
+- Python 3, with the following libraries installed: `numpy`, `matplotlib`, `scipy`, `vtk`, `pathlib`, `io`
+- Latex compiler, with packages `inputenc`, `graphicx`, `geometry`, `caption`.
+
+## Running the workflow
+Before running the workflow please make sure that OpenFoam in loaded in the envroment and all the supporting utilities have been compiled and are available for use.
+
+The workflow must be executed in case directory:
+
+```bash
+cd assets/ahmedBody
+```
+
+The complete workflow can be executed through the following commands:
+
+```bash
+./Allrun.pre
+./Allrun
+./makePdf.sh
+```
+
+The relevant parameters for the simulations may be setted in the `assets/ahmedBody/system/workflowParams` folder.
+
 ## Utilities
 
 ### Building the utilities
@@ -147,6 +174,13 @@ entries that are included in `system/snappyHexMeshDict`:
 
 The generated file contains `nSurfaceLayers`, `expansionRatio`,
 `firstLayerThickness`, and `totalLayerThickness`.
+
+Before mesh generation, `Allrun.pre` compares the generated total layer
+thickness with `addLayersControls/minThickness` in
+`system/snappyHexMeshDict`. If the requested total is smaller, preprocessing
+stops with an error instead of silently generating a mesh without the requested
+wall layers. Resolve the mismatch by increasing the requested layer thickness
+or lowering `minThickness`.
 
 `maxCells` is a hard upper limit for the generated mesh. Before meshing, the
 workflow estimates the final count from the generated domain volume, refinement

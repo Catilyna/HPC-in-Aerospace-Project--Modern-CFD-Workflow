@@ -36,7 +36,7 @@ solvers
         solver           smoothSolver;
         smoother         GaussSeidel;
         tolerance        1e-8;
-        relTol           0.0;
+        relTol           0.0; // TODO: why 0?? Isn't this slowing us down a lot??
     }
    
     Phi
@@ -71,7 +71,7 @@ relaxationFactors
     }
     equations
     {
-        U               0.7;
+        U               0.7; // TODO: try with higher relaxation factor for U, to see if we can speed up (depends a lot on how good is our grid)
         k               0.7;
         omega           0.7;
     }

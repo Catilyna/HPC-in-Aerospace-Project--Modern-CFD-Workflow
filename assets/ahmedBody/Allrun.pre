@@ -188,6 +188,33 @@ checkCellBudget () {
     echo "Cell budget: max $maxCells, estimated final count $_estimate"
 }
 
+checkLayerThickness () {
+    _totalThickness=$(readKeyword totalLayerThickness system/layerParams) || return 1
+    _minimumThickness=$(readKeyword addLayersControls/minThickness system/snappyHexMeshDict) || return 1
+
+    if awk -v total="$_totalThickness" -v minimum="$_minimumThickness" '
+        BEGIN {
+            number = "^[+]?[0-9]+([.][0-9]*)?([eE][-+]?[0-9]+)?$|^[+]?([.][0-9]+)([eE][-+]?[0-9]+)?$"
+            if (total !~ number || minimum !~ number || total + 0 <= 0 || minimum + 0 <= 0)
+                exit 2
+            if (total + 0 < minimum + 0)
+                exit 1
+        }'
+    then
+        echo "Layer thickness check passed: requested total $_totalThickness m meets minThickness $_minimumThickness m"
+    else
+        _status=$?
+        if [ "$_status" -eq 1 ]
+        then
+            echo "Incompatible layer thickness: requested total $_totalThickness m is below minThickness $_minimumThickness m" >&2
+            echo "Increase the requested layer thickness or lower addLayersControls/minThickness in system/snappyHexMeshDict." >&2
+        else
+            echo "Unable to validate layer thickness: totalLayerThickness and minThickness must be positive numeric values." >&2
+        fi
+        return 1
+    fi
+}
+
 checkFinalCellCount () {
     _actualCells=$(awk '$1 == "cells:" {print $2; exit}' log.checkMesh)
     if ! checkPositiveInteger "Final cell count" "$_actualCells"
@@ -281,6 +308,9 @@ runApplication calculateWallLayers \
     "$nSurfaceLayers" \
     "$expansionRatio"
 
+#- reject layer settings that cannot meet the configured minimum thickness
+checkLayerThickness || exit 1
+
 #- validate STL geometry before proceeding with the workflow
 runApplication surfaceCheck constant/geometry/ahmedBody.stl
 
@@ -320,9 +350,8 @@ rm -rf cellLevel level0Edge pointLevel surfaceIndex \
 runParallel checkMesh
 checkFinalCellCount
 
-runParallel reconstructPar -constant
-
 if $display
 then
+    runApplication reconstructPar -constant 
     paraFoam -builtin
 fi
